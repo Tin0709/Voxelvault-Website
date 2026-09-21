@@ -1,10 +1,11 @@
+import { Link, NavLink } from "react-router";
+
 function Header({ searchQuery, onSearchChange }) {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-background/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-5 px-6 py-4 lg:px-10">
-        {/* Logo */}
-        <a
-          href="/"
+        <Link
+          to="/"
           className="flex shrink-0 items-center gap-3"
           aria-label="VoxelVault home"
         >
@@ -27,20 +28,24 @@ function Header({ searchQuery, onSearchChange }) {
           <span className="font-headline-lg text-2xl tracking-tight">
             VoxelVault
           </span>
-        </a>
+        </Link>
 
-        {/* Current page */}
         <nav aria-label="Main navigation" className="ml-auto sm:ml-4">
-          <a
-            href="/"
-            aria-current="page"
-            className="rounded-full bg-white/5 px-5 py-2.5 text-sm font-medium text-primary"
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              `rounded-full px-5 py-2.5 text-sm font-medium transition ${
+                isActive
+                  ? "bg-white/5 text-primary"
+                  : "text-on-surface-variant hover:text-primary"
+              }`
+            }
           >
             Explore
-          </a>
+          </NavLink>
         </nav>
 
-        {/* Search */}
         <div
           role="search"
           className="order-last w-full sm:order-none sm:ml-auto sm:w-auto sm:max-w-md sm:flex-1"

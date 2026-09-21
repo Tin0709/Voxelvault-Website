@@ -1,23 +1,18 @@
-// Vite lấy URL của các file trong thư mục creations.
-// eager chỉ import URL ngay; ảnh vẫn được tải theo thẻ <img>.
 const files = import.meta.glob("../assets/creations/*", {
   eager: true,
   query: "?url",
   import: "default",
 });
-// Lấy ảnh phụ trong từng thư mục gallery.
+
 const galleryFiles = import.meta.glob("../assets/creations/galleries/*/*", {
   eager: true,
   query: "?url",
   import: "default",
 });
 
-// Chấp nhận cả đuôi viết thường và viết hoa, ví dụ .jpg và .JPG.
 const imageExtension =
   /\.(jpe?g|jfif|pjpeg|pjp|png|apng|webp|avif|gif|svg|bmp|ico)$/i;
 
-// Chuẩn hóa tên để khớp thông tin:
-// "Toothless – Night Fury" → "toothless-night-fury"
 function normalizeName(name) {
   return name
     .normalize("NFD")
@@ -27,6 +22,7 @@ function normalizeName(name) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+
 function getGalleryImages(creationKey, title) {
   return Object.entries(galleryFiles)
     .filter(([path]) => {
@@ -53,8 +49,6 @@ function getGalleryImages(creationKey, title) {
     });
 }
 
-// Thông tin mẫu: bạn có thể chỉnh category, creator, location.
-// Các category khớp với FilterBar hiện tại.
 const details = {
   "the-queen-arc-raiders": {
     title: "The Queen — ARC Raiders",
@@ -94,16 +88,28 @@ export const creations = Object.entries(files)
     const nameWithoutExtension = filename.replace(/\.[^.]+$/, "");
     const key = normalizeName(nameWithoutExtension);
     const info = details[key] ?? {};
-
     const title = info.title ?? nameWithoutExtension;
 
+    const sourceDownloads =
+      info.downloads ??
+      (info.downloadUrl
+        ? [
+            {
+              name: "World files",
+              url: info.downloadUrl,
+              format: info.fileFormat ?? "",
+              size: info.fileSize ?? "",
+            },
+          ]
+        : []);
+
     return {
-      // Giữ phần mở rộng để hai file cùng tên khác định dạng
-      // vẫn có ID riêng.
       id: filename,
       title,
       category: info.category ?? "uncategorized",
       image: imageUrl,
+      alt: info.alt ?? `Preview of ${title}`,
+
       gallery: [
         {
           src: imageUrl,
@@ -111,12 +117,23 @@ export const creations = Object.entries(files)
         },
         ...getGalleryImages(key, title),
       ],
-      alt: info.alt ?? `Preview of ${title}`,
+
       creator: info.creator ?? "Unknown creator",
       location: info.location ?? "Sample collection",
       description: info.description ?? "",
-      downloadUrl: info.downloadUrl ?? "",
+      revisionNotes: info.revisionNotes ?? "",
       minecraftVersion: info.minecraftVersion ?? "",
+
+      downloads: sourceDownloads.map((download, index) => ({
+        id: download.id ?? `${filename}-download-${index + 1}`,
+        name: download.name ?? "",
+        url: download.url ?? "",
+        format: download.format ?? "",
+        size: download.size ?? "",
+      })),
+
+      // Giữ để tương thích với component cũ.
+      downloadUrl: info.downloadUrl ?? "",
       fileFormat: info.fileFormat ?? "",
       fileSize: info.fileSize ?? "",
     };

@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import PostGallery from "./PostGallery";
+import PostMediaEditor from "./PostMediaEditor";
+import PostDownloadsEditor from "./PostDownloadsEditor";
+import PostDownloads from "./PostDownloads";
 
 const categories = [
   "architecture",
@@ -19,18 +22,57 @@ const inputClass =
 function PostEditor({ creation }) {
   const [draft, setDraft] = useState(() => ({
     ...creation,
+    title: creation.title ?? "",
+    category: creation.category ?? "uncategorized",
+    location: creation.location ?? "",
     description: creation.description ?? "",
-    downloadUrl: creation.downloadUrl ?? "",
     minecraftVersion: creation.minecraftVersion ?? "",
-    fileFormat: creation.fileFormat ?? "",
-    fileSize: creation.fileSize ?? "",
     revisionNotes: creation.revisionNotes ?? "",
+
+    downloads: (creation.downloads ?? []).map((download, index) => ({
+      id: download.id ?? `${creation.id}-download-${index + 1}`,
+      name: download.name ?? "",
+      url: download.url ?? "",
+      format: download.format ?? "",
+      size: download.size ?? "",
+    })),
+
+    gallery: creation.gallery?.length
+      ? creation.gallery.map((image) => ({ ...image }))
+      : creation.image
+        ? [
+            {
+              src: creation.image,
+              alt: creation.alt ?? creation.title,
+            },
+          ]
+        : [],
   }));
 
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
+  const [mediaError, setMediaError] = useState("");
+
+  const isMounted = useRef(false);
+  const objectUrls = useRef(new Set());
 
   const detailUrl = `/creations/${encodeURIComponent(creation.id)}`;
+
+  useEffect(() => {
+    isMounted.current = true;
+    const urls = objectUrls.current;
+
+    return () => {
+      isMounted.current = false;
+      urls.forEach((url) => URL.revokeObjectURL(url));
+      urls.clear();
+    };
+  }, []);
+
+  function clearPreview() {
+    setPreview(null);
+    setError("");
+  }
 
   function updateField(event) {
     const { name, value } = event.target;
@@ -40,39 +82,161 @@ function PostEditor({ creation }) {
       [name]: value,
     }));
 
-    // Ẩn bản xem trước cũ khi nội dung thay đổi.
-    setPreview(null);
-    setError("");
+    clearPreview();
+  }
+
+  function updateDownloads(downloads) {
+    setDraft((current) => ({
+      ...current,
+      downloads,
+    }));
+
+    clearPreview();
+  }
+
+  function updateGallery(images) {
+    const retainedUrls = new Set(images.map((image) => image.src));
+
+    // Chỉ thu hồi ảnh đã nằm trong gallery và vừa bị xóa.
+    // Không thu hồi URL của những ảnh đang được đọc.
+    for (const image of draft.gallery) {
+      if (!retainedUrls.has(image.src) && objectUrls.current.has(image.src)) {
+        URL.revokeObjectURL(image.src);
+        objectUrls.current.delete(image.src);
+      }
+    }
+
+    setDraft((current) => ({
+      ...current,
+      gallery: images,
+      image: images[0]?.src ?? "",
+      alt: images[0]?.alt ?? "",
+    }));
+
+    clearPreview();
+  }
+
+  async function addImages(files) {
+    const allowedExtension = /\.(jpe?g|png|webp|avif|gif)$/i;
+    const acceptedImages = [];
+    const rejectedNames = [];
+
+    for (const file of files) {
+      if (!isMounted.current) return;
+
+      if (!allowedExtension.test(file.name)) {
+        rejectedNames.push(file.name);
+        continue;
+      }
+
+      const src = URL.createObjectURL(file);
+      objectUrls.current.add(src);
+
+      const readable = await new Promise((resolve) => {
+        const image = new Image();
+        image.onload = () => resolve(true);
+        image.onerror = () => resolve(false);
+        image.src = src;
+      });
+
+      if (!isMounted.current) return;
+
+      if (!objectUrls.current.has(src)) {
+        continue;
+      }
+
+      if (!readable) {
+        URL.revokeObjectURL(src);
+        objectUrls.current.delete(src);
+        rejectedNames.push(file.name);
+        continue;
+      }
+
+      acceptedImages.push({
+        src,
+        alt: file.name.replace(/\.[^.]+$/, ""),
+        file,
+      });
+    }
+
+    if (!isMounted.current) return;
+
+    const availableImages = acceptedImages.filter((image) =>
+      objectUrls.current.has(image.src),
+    );
+
+    if (availableImages.length > 0) {
+      setDraft((current) => {
+        const gallery = [...current.gallery, ...availableImages];
+
+        return {
+          ...current,
+          gallery,
+          image: gallery[0].src,
+          alt: gallery[0].alt,
+        };
+      });
+
+      clearPreview();
+    }
+
+    setMediaError(
+      rejectedNames.length > 0
+        ? `Could not read: ${rejectedNames.join(", ")}`
+        : "",
+    );
   }
 
   function handlePreview(event) {
     event.preventDefault();
+
+    if (draft.gallery.length === 0) {
+      setError("Please add at least one image.");
+      return;
+    }
 
     if (!draft.title.trim()) {
       setError("Please enter a post title.");
       return;
     }
 
-    const downloadUrl = draft.downloadUrl.trim();
+    const downloads = [];
 
-    if (downloadUrl) {
-      try {
-        const url = new URL(downloadUrl);
+    for (const [index, download] of draft.downloads.entries()) {
+      const name = download.name.trim();
+      const url = download.url.trim();
 
-        if (!["http:", "https:"].includes(url.protocol)) {
-          throw new Error("Unsupported URL");
-        }
-      } catch {
-        setError("Please enter a valid HTTP or HTTPS download link.");
+      if (!name || !url) {
+        setError(`Please enter a name and URL for file ${index + 1}.`);
         return;
       }
+
+      try {
+        const parsedUrl = new URL(url);
+
+        if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+          throw new Error("Unsupported protocol");
+        }
+      } catch {
+        setError(`File ${index + 1} needs a valid HTTP or HTTPS link.`);
+        return;
+      }
+
+      downloads.push({
+        ...download,
+        name,
+        url,
+        format: (download.format ?? "").trim(),
+        size: (download.size ?? "").trim(),
+      });
     }
 
     setError("");
+
     setPreview({
       ...draft,
       title: draft.title.trim(),
-      downloadUrl,
+      downloads,
     });
   }
 
@@ -105,15 +269,17 @@ function PostEditor({ creation }) {
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
           <div className="min-w-0 space-y-6 lg:col-span-7">
-            <section className={panelClass}>
-              <h2 className="font-headline-lg text-xl">Media gallery</h2>
+            <PostMediaEditor
+              images={draft.gallery}
+              onChange={updateGallery}
+              onAddFiles={addImages}
+            />
 
-              <p className="mb-5 mt-2 text-sm text-on-surface-variant">
-                Current cover and additional images.
+            {mediaError && (
+              <p role="alert" className="text-sm text-red-300">
+                {mediaError}
               </p>
-
-              <PostGallery creation={draft} />
-            </section>
+            )}
 
             <section className={`${panelClass} space-y-5`}>
               <h2 className="font-headline-lg text-xl">Post details</h2>
@@ -179,50 +345,10 @@ function PostEditor({ creation }) {
           </div>
 
           <div className="min-w-0 space-y-6 lg:col-span-5">
-            <section className={`${panelClass} space-y-5`}>
-              <div>
-                <h2 className="font-headline-lg text-xl">Downloadable file</h2>
-                <p className="mt-2 text-sm text-on-surface-variant">
-                  Add a link to the world save or other downloadable file.
-                </p>
-              </div>
-
-              <label className="block text-sm">
-                Download URL
-                <input
-                  name="downloadUrl"
-                  type="url"
-                  value={draft.downloadUrl}
-                  onChange={updateField}
-                  placeholder="https://..."
-                  className={inputClass}
-                />
-              </label>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <label className="block text-sm">
-                  File format
-                  <input
-                    name="fileFormat"
-                    value={draft.fileFormat}
-                    onChange={updateField}
-                    placeholder="e.g. ZIP, LITEMATIC"
-                    className={inputClass}
-                  />
-                </label>
-
-                <label className="block text-sm">
-                  File size
-                  <input
-                    name="fileSize"
-                    value={draft.fileSize}
-                    onChange={updateField}
-                    placeholder="e.g. 2.4 GB"
-                    className={inputClass}
-                  />
-                </label>
-              </div>
-            </section>
+            <PostDownloadsEditor
+              downloads={draft.downloads}
+              onChange={updateDownloads}
+            />
 
             <section className={`${panelClass} space-y-5`}>
               <h2 className="font-headline-lg text-xl">
@@ -233,7 +359,7 @@ function PostEditor({ creation }) {
                 Collection
                 <input
                   name="location"
-                  value={draft.location ?? ""}
+                  value={draft.location}
                   onChange={updateField}
                   className={inputClass}
                 />
@@ -269,6 +395,13 @@ function PostEditor({ creation }) {
             Preview updated — nothing has been saved.
           </p>
 
+          <div className="mt-5">
+            <PostGallery
+              key={preview.gallery.map((image) => image.src).join("|")}
+              creation={preview}
+            />
+          </div>
+
           <h2
             id="editor-preview-title"
             className="mt-4 break-words font-headline-lg text-3xl"
@@ -288,8 +421,6 @@ function PostEditor({ creation }) {
             {[
               ["Collection", preview.location],
               ["Minecraft version", preview.minecraftVersion],
-              ["File format", preview.fileFormat],
-              ["File size", preview.fileSize],
               ["Revision notes", preview.revisionNotes],
             ]
               .filter(([, value]) => value?.trim())
@@ -303,16 +434,11 @@ function PostEditor({ creation }) {
               ))}
           </dl>
 
-          {preview.downloadUrl && (
-            <a
-              href={preview.downloadUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-6 inline-block rounded-full bg-primary px-5 py-3 text-sm font-medium text-on-primary"
-            >
-              Open download link ↗
-            </a>
-          )}
+          <div className="mt-6">
+            <h3 className="mb-4 font-headline-lg text-xl">Downloads</h3>
+
+            <PostDownloads downloads={preview.downloads} />
+          </div>
         </section>
       )}
     </main>

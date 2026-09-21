@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import PostGallery from "../components/post/PostGallery";
 import { creations } from "../data/creations";
 import RelatedCreations from "../components/post/RelatedCreations";
+import PostDownloads from "../components/post/PostDownloads";
 
 function PostDetailPage() {
   const { id } = useParams();
@@ -43,8 +44,6 @@ function PostDetailPage() {
   const specifications = [
     ["Collection", creation.location],
     ["Minecraft version", creation.minecraftVersion],
-    ["File format", creation.fileFormat],
-    ["File size", creation.fileSize],
   ].filter(([, value]) => Boolean(value));
 
   return (
@@ -154,20 +153,7 @@ function PostDetailPage() {
             </dl>
 
             <div className="mt-6 border-t border-white/10 pt-6">
-              {creation.downloadUrl ? (
-                <a
-                  href={creation.downloadUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block rounded-xl bg-primary px-5 py-4 text-center font-medium text-on-primary transition hover:opacity-90"
-                >
-                  Get world files ↗
-                </a>
-              ) : (
-                <p className="rounded-xl bg-white/5 p-4 text-center text-sm text-on-surface-variant">
-                  Downloads are not available for this creation yet.
-                </p>
-              )}
+              <PostDownloads downloads={creation.downloads} />
             </div>
           </section>
         </aside>

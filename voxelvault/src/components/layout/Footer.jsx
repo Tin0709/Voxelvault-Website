@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+
 function Footer() {
   function scrollToTop() {
     const prefersReducedMotion = window.matchMedia(
@@ -16,12 +17,12 @@ function Footer() {
       <div className="mx-auto max-w-[1600px] px-6 py-10 lg:px-10">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <a
-              href="/"
+            <Link
+              to="/"
               className="font-headline-lg text-xl tracking-tight text-on-surface"
             >
               VoxelVault
-            </a>
+            </Link>
 
             <p className="mt-2 max-w-sm text-sm leading-relaxed text-on-surface-variant">
               A home for extraordinary worlds and the ideas behind them.
@@ -52,7 +53,6 @@ function Footer() {
 
         <div className="mt-8 flex flex-col gap-2 border-t border-white/5 pt-6 text-xs leading-relaxed text-on-surface-variant sm:flex-row sm:justify-between">
           <p>VoxelVault · {new Date().getFullYear()}</p>
-
           <p>Images and builds belong to their respective creators.</p>
         </div>
       </div>
