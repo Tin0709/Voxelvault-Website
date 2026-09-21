@@ -19,7 +19,7 @@ const panelClass = "rounded-2xl border border-white/10 bg-white/[0.03] p-6";
 const inputClass =
   "mt-2 w-full rounded-xl border border-white/10 bg-background px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
 
-function PostEditor({ creation }) {
+function PostEditor({ creation, mode = "edit" }) {
   const [draft, setDraft] = useState(() => ({
     ...creation,
     title: creation.title ?? "",
@@ -56,8 +56,11 @@ function PostEditor({ creation }) {
   const isMounted = useRef(false);
   const objectUrls = useRef(new Set());
 
-  const detailUrl = `/creations/${encodeURIComponent(creation.id)}`;
+  const isCreating = mode === "create";
 
+  const backUrl = isCreating
+    ? "/"
+    : `/creations/${encodeURIComponent(creation.id)}`;
   useEffect(() => {
     isMounted.current = true;
     const urls = objectUrls.current;
@@ -246,15 +249,27 @@ function PostEditor({ creation }) {
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
             <Link
-              to={detailUrl}
+              to={backUrl}
               className="text-sm text-on-surface-variant hover:text-primary"
             >
-              ← Back to post
+              {isCreating ? "← Back to Explore" : "← Back to post"}
             </Link>
 
-            <h1 className="mt-3 font-headline-lg text-3xl">Edit post</h1>
+            <p className="mt-6 text-xs uppercase tracking-[0.2em] text-primary">
+              VoxelVault Studio
+            </p>
 
-            <p className="mt-2 text-sm text-on-surface-variant">
+            <h1 className="mt-3 font-headline-lg text-3xl">
+              {isCreating ? "Create a new post" : "Edit post"}
+            </h1>
+
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-on-surface-variant">
+              {isCreating
+                ? "Share your images, tell their story, and add downloadable files."
+                : "Update your images, post details, and downloadable files."}
+            </p>
+
+            <p className="mt-2 text-xs text-on-surface-variant">
               Preview only. Changes are lost when you leave or refresh.
             </p>
           </div>
@@ -263,7 +278,7 @@ function PostEditor({ creation }) {
             type="submit"
             className="rounded-full bg-primary px-6 py-3 text-sm font-medium text-on-primary transition hover:opacity-90"
           >
-            Preview changes
+            {isCreating ? "Preview post" : "Preview changes"}
           </button>
         </div>
 

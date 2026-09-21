@@ -30,12 +30,15 @@ function Header({ searchQuery, onSearchChange }) {
           </span>
         </Link>
 
-        <nav aria-label="Main navigation" className="ml-auto sm:ml-4">
+        <nav
+          aria-label="Main navigation"
+          className="ml-auto flex items-center gap-2 sm:ml-4"
+        >
           <NavLink
             to="/"
             end
             className={({ isActive }) =>
-              `rounded-full px-5 py-2.5 text-sm font-medium transition ${
+              `rounded-full px-4 py-2.5 text-sm font-medium transition ${
                 isActive
                   ? "bg-white/5 text-primary"
                   : "text-on-surface-variant hover:text-primary"
@@ -43,6 +46,20 @@ function Header({ searchQuery, onSearchChange }) {
             }
           >
             Explore
+          </NavLink>
+
+          <NavLink
+            to="/create"
+            className={({ isActive }) =>
+              `inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-on-primary transition hover:opacity-90 ${
+                isActive
+                  ? "ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
+                  : ""
+              }`
+            }
+          >
+            <span aria-hidden="true">+</span>
+            Create
           </NavLink>
         </nav>
 
