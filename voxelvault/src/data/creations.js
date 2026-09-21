@@ -44,6 +44,7 @@ const details = {
   "brookside-croft": {
     title: "Brookside Croft",
     category: "architecture",
+    description: "A quiet countryside retreat, built one block at a time.",
   },
   leinhausen: {
     title: "Leinhausen",
@@ -75,6 +76,8 @@ export const creations = Object.entries(files)
       alt: info.alt ?? `Preview of ${title}`,
       creator: info.creator ?? "Unknown creator",
       location: info.location ?? "Sample collection",
+      description: info.description ?? "",
+      downloadUrl: info.downloadUrl ?? "",
     };
   })
   .sort((a, b) => a.title.localeCompare(b.title));

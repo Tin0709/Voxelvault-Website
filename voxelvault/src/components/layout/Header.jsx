@@ -1,4 +1,4 @@
-function Header() {
+function Header({ searchQuery, onSearchChange }) {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-background/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-5 px-6 py-4 lg:px-10">
@@ -67,6 +67,8 @@ function Header() {
             <input
               id="creation-search"
               type="search"
+              value={searchQuery}
+              onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Search worlds, builds, inspiration..."
               className="w-full rounded-full border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-sm text-on-surface outline-none transition placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
