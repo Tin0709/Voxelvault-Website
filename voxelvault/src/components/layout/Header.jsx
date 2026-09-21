@@ -32,7 +32,7 @@ function Header({ searchQuery, onSearchChange }) {
 
         <nav
           aria-label="Main navigation"
-          className="ml-auto flex items-center gap-2 sm:ml-4"
+          className="ml-auto flex flex-wrap items-center gap-2 sm:ml-4"
         >
           <NavLink
             to="/"
@@ -46,6 +46,19 @@ function Header({ searchQuery, onSearchChange }) {
             }
           >
             Explore
+          </NavLink>
+
+          <NavLink
+            to="/my-posts"
+            className={({ isActive }) =>
+              `rounded-full px-4 py-2.5 text-sm font-medium transition ${
+                isActive
+                  ? "bg-white/5 text-primary"
+                  : "text-on-surface-variant hover:text-primary"
+              }`
+            }
+          >
+            My Posts
           </NavLink>
 
           <NavLink
@@ -96,6 +109,12 @@ function Header({ searchQuery, onSearchChange }) {
             />
           </div>
         </div>
+        <Link
+          to="/login"
+          className="shrink-0 rounded-full border border-white/15 px-4 py-2.5 text-sm font-medium text-on-surface transition hover:border-primary/40 hover:text-primary"
+        >
+          Sign in
+        </Link>
       </div>
     </header>
   );

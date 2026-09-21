@@ -1,3 +1,5 @@
+import { creators } from "./creators";
+
 const files = import.meta.glob("../assets/creations/*", {
   eager: true,
   query: "?url",
@@ -70,6 +72,7 @@ const details = {
     title: "Brookside Croft",
     category: "architecture",
     description: "A quiet countryside retreat, built one block at a time.",
+    creatorId: "demo-creator",
   },
   leinhausen: {
     title: "Leinhausen",
@@ -88,6 +91,7 @@ export const creations = Object.entries(files)
     const nameWithoutExtension = filename.replace(/\.[^.]+$/, "");
     const key = normalizeName(nameWithoutExtension);
     const info = details[key] ?? {};
+    const creator = creators.find((item) => item.id === info.creatorId);
     const title = info.title ?? nameWithoutExtension;
 
     const sourceDownloads =
@@ -118,7 +122,8 @@ export const creations = Object.entries(files)
         ...getGalleryImages(key, title),
       ],
 
-      creator: info.creator ?? "Unknown creator",
+      creatorId: creator?.id ?? null,
+      creator: creator?.name ?? info.creator ?? "Unknown creator",
       location: info.location ?? "Sample collection",
       description: info.description ?? "",
       revisionNotes: info.revisionNotes ?? "",

@@ -133,9 +133,18 @@ function PostDetailPage() {
 
               <div className="min-w-0">
                 <p className="text-xs text-on-surface-variant">Created by</p>
-                <p className="break-words text-sm font-medium">
-                  {creation.creator}
-                </p>
+                {creation.creatorId ? (
+                  <Link
+                    to={`/creators/${encodeURIComponent(creation.creatorId)}`}
+                    className="block break-words text-sm font-medium transition hover:text-primary"
+                  >
+                    {creation.creator}
+                  </Link>
+                ) : (
+                  <p className="break-words text-sm font-medium">
+                    {creation.creator}
+                  </p>
+                )}
               </div>
             </div>
           </section>

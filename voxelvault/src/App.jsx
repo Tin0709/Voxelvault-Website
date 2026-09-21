@@ -6,6 +6,9 @@ import ExplorePage from "./pages/ExplorePage";
 import PostDetailPage from "./pages/PostDetailPage";
 import EditPostPage from "./pages/EditPostPage";
 import CreatePostPage from "./pages/CreatePostPage";
+import MyPostsPage from "./pages/MyPostsPage";
+import AuthPage from "./pages/AuthPage";
+import CreatorProfilePage from "./pages/CreatorProfilePage";
 
 function App() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -38,6 +41,7 @@ function App() {
           }
         />
         <Route path="/create" element={<CreatePostPage />} />
+        <Route path="/my-posts" element={<MyPostsPage />} />
         <Route path="/creations/:id/edit" element={<EditPostPage />} />
 
         <Route path="/creations/:id" element={<PostDetailPage />} />
@@ -53,6 +57,13 @@ function App() {
             </main>
           }
         />
+        <Route path="/login" element={<AuthPage key="login" mode="login" />} />
+
+        <Route
+          path="/register"
+          element={<AuthPage key="register" mode="register" />}
+        />
+        <Route path="/creators/:creatorId" element={<CreatorProfilePage />} />
       </Routes>
 
       <Footer />
