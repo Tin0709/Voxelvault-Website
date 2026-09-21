@@ -5,6 +5,12 @@ const files = import.meta.glob("../assets/creations/*", {
   query: "?url",
   import: "default",
 });
+// Lấy ảnh phụ trong từng thư mục gallery.
+const galleryFiles = import.meta.glob("../assets/creations/galleries/*/*", {
+  eager: true,
+  query: "?url",
+  import: "default",
+});
 
 // Chấp nhận cả đuôi viết thường và viết hoa, ví dụ .jpg và .JPG.
 const imageExtension =
@@ -20,6 +26,31 @@ function normalizeName(name) {
     .replace(/đ/g, "d")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+function getGalleryImages(creationKey, title) {
+  return Object.entries(galleryFiles)
+    .filter(([path]) => {
+      const segments = path.split("/");
+      const folderName = segments[segments.length - 2];
+
+      return folderName === creationKey && imageExtension.test(path);
+    })
+    .sort(([pathA], [pathB]) =>
+      pathA.localeCompare(pathB, undefined, { numeric: true }),
+    )
+    .map(([path, src]) => {
+      const filename = path.split("/").pop();
+
+      const label = filename
+        .replace(/\.[^.]+$/, "")
+        .replace(/^\d+[-_\s]*/, "")
+        .replace(/[-_]+/g, " ");
+
+      return {
+        src,
+        alt: `${title} — ${label || "additional view"}`,
+      };
+    });
 }
 
 // Thông tin mẫu: bạn có thể chỉnh category, creator, location.
@@ -73,11 +104,21 @@ export const creations = Object.entries(files)
       title,
       category: info.category ?? "uncategorized",
       image: imageUrl,
+      gallery: [
+        {
+          src: imageUrl,
+          alt: info.alt ?? `Preview of ${title}`,
+        },
+        ...getGalleryImages(key, title),
+      ],
       alt: info.alt ?? `Preview of ${title}`,
       creator: info.creator ?? "Unknown creator",
       location: info.location ?? "Sample collection",
       description: info.description ?? "",
       downloadUrl: info.downloadUrl ?? "",
+      minecraftVersion: info.minecraftVersion ?? "",
+      fileFormat: info.fileFormat ?? "",
+      fileSize: info.fileSize ?? "",
     };
   })
   .sort((a, b) => a.title.localeCompare(b.title));

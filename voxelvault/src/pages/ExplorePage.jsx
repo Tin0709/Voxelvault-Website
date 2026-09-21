@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useNavigate } from "react-router";
 import ExploreHero from "../components/explore/ExploreHero";
 import FilterBar from "../components/explore/FilterBar";
 import MasonryGrid from "../components/explore/MasonryGrid";
-import CreationModal from "../components/explore/CreationModal";
 import { creations } from "../data/creations";
 
 function normalizeText(value) {
@@ -13,9 +12,8 @@ function normalizeText(value) {
     .toLowerCase();
 }
 
-function ExplorePage({ searchQuery = "" }) {
-  const [activeCategory, setActiveCategory] = useState("all");
-  const [selectedCreation, setSelectedCreation] = useState(null);
+function ExplorePage({ searchQuery = "", activeCategory, onCategoryChange }) {
+  const navigate = useNavigate();
 
   const searchTerms = normalizeText(searchQuery)
     .trim()
@@ -46,12 +44,12 @@ function ExplorePage({ searchQuery = "" }) {
   });
 
   return (
-    <main className="mx-auto max-w-[1600px] px-6 pb-16 lg:px-10">
+    <main className="mx-auto w-full max-w-[1600px] flex-1 px-6 pb-16 lg:px-10">
       <ExploreHero />
 
       <FilterBar
         activeCategory={activeCategory}
-        onCategoryChange={setActiveCategory}
+        onCategoryChange={onCategoryChange}
       />
 
       <section aria-label="Creations" className="pt-6">
@@ -77,7 +75,7 @@ function ExplorePage({ searchQuery = "" }) {
           {activeCategory !== "all" && (
             <button
               type="button"
-              onClick={() => setActiveCategory("all")}
+              onClick={() => onCategoryChange("all")}
               className="rounded-full px-3 py-1 text-sm text-primary transition hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
             >
               Show all categories
@@ -87,17 +85,11 @@ function ExplorePage({ searchQuery = "" }) {
 
         <MasonryGrid
           creations={filteredCreations}
-          onCreationClick={setSelectedCreation}
+          onCreationClick={(creation) =>
+            navigate(`/creations/${encodeURIComponent(creation.id)}`)
+          }
         />
       </section>
-
-      {selectedCreation && (
-        <CreationModal
-          key={selectedCreation.id}
-          creation={selectedCreation}
-          onClose={() => setSelectedCreation(null)}
-        />
-      )}
     </main>
   );
 }

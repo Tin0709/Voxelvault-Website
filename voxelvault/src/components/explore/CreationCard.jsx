@@ -9,7 +9,6 @@ function CreationCard({ creation, onOpen }) {
         type="button"
         onClick={() => onOpen(creation)}
         aria-label={`View ${creation.title}`}
-        aria-haspopup="dialog"
         className="block w-full rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background"
       >
         <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5">
