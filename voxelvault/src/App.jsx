@@ -4,6 +4,7 @@ import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import ExplorePage from "./pages/ExplorePage";
 import PostDetailPage from "./pages/PostDetailPage";
+import EditPostPage from "./pages/EditPostPage";
 
 function App() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -35,6 +36,7 @@ function App() {
             />
           }
         />
+        <Route path="/creations/:id/edit" element={<EditPostPage />} />
 
         <Route path="/creations/:id" element={<PostDetailPage />} />
 

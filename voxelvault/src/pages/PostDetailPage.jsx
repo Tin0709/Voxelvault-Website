@@ -82,6 +82,12 @@ function PostDetailPage() {
           >
             Copy link ↗
           </button>
+          <Link
+            to={`/creations/${encodeURIComponent(creation.id)}/edit`}
+            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-on-primary transition hover:opacity-90"
+          >
+            Edit post
+          </Link>
         </div>
       </div>
 
