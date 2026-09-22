@@ -7,6 +7,14 @@ worlds, models, design work, documents and other content.
 
 - Posts, showcase images and optional source credit are public.
 - Attachments belong to the posting account. Only that account may download them.
+- Directly selected files, including images, are limited to 50 MB each (50,000,000
+  bytes, inclusive). Oversized files are rejected before reading or upload.
+- Larger files stay on an external host such as Google Drive or MEGA. Optional
+  `externalDownloads` entries contain an id, name and URL, separately from public
+  `creditUrl` (the original post). Users may combine files and external links.
+- External download URLs are owner-only data in VoxelVault, but destination access
+  is controlled by the external provider. VoxelVault cannot revoke a copied public
+  sharing link. Do not include these URLs in public post API responses.
 - `ownerId` identifies the posting account; `originalCreator`, `originalSource` and
   `creditUrl` describe the original work independently. Credit never grants permissions.
 - A new account has zero posts, zero files and zero used bytes. Production data must
@@ -36,8 +44,10 @@ they are not proof of authorship or an authenticated identity.
    and a shared category model for content beyond Minecraft.
 2. Connect Supabase Auth and session-aware personal routes.
 3. Implement profiles, posts, post_images, attachments and upload_sessions in PostgreSQL.
-4. Add genuine uploads with per-file progress, failure, retry, cancellation and
-   multipart support for large files. Never simulate successful uploads in production.
+4. Add genuine uploads with per-file progress, failure, retry and cancellation;
+   enforce the 50,000,000-byte per-file limit at upload authorization and completion.
+   Large files use external URLs, with no automatic import or download by VoxelVault.
+   Never simulate successful uploads in production.
 5. Enforce owner-only download/update/delete in the backend; keep attachment objects
    private. Reserve quota atomically for concurrent uploads, verify actual stored bytes,
    and clean up abandoned uploads and objects from failed saves/deletions.

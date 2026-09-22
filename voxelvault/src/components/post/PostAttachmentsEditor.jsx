@@ -1,19 +1,20 @@
-import { useId } from "react";
-import { describeFile, formatBytes } from "../../utils/attachments";
+import { useState } from "react";
+import FileDropZone from "../ui/FileDropZone";
+import { describeFile, exceedsUploadLimit, formatBytes } from "../../utils/attachments";
 
 function PostAttachmentsEditor({ attachments, onAdd, onRemove }) {
-  const inputId = useId();
+  const [rejectedNames, setRejectedNames] = useState([]);
   const totalBytes = attachments.reduce((total, file) => total + file.sizeBytes, 0);
 
-  function selectFiles(event) {
-    const files = Array.from(event.target.files ?? []).map((file) => ({
+  function selectFiles(selectedFiles) {
+    setRejectedNames(selectedFiles.filter(exceedsUploadLimit).map((file) => file.name));
+    const files = selectedFiles.filter((file) => !exceedsUploadLimit(file)).map((file) => ({
       ...describeFile(file),
       id: crypto.randomUUID(),
       file,
       status: "selected",
     }));
-    onAdd(files);
-    event.target.value = "";
+    if (files.length) onAdd(files);
   }
 
   return (
@@ -23,16 +24,20 @@ function PostAttachmentsEditor({ attachments, onAdd, onRemove }) {
         <span className="rounded-full bg-primary/10 px-3 py-1 text-xs text-primary">Owner only</span>
       </div>
       <p className="mt-3 text-sm leading-relaxed text-on-surface-variant">
-        Attach your saves, models, documents or other files. Once storage is connected,
+        Attach files up to 50 MB each. For larger files, add an external download link below. Once storage is connected,
         only the account that owns this post will be able to download them.
       </p>
-      <label htmlFor={inputId} className="mt-5 block text-sm font-medium">Choose files — optional</label>
-      <input id={inputId} type="file" multiple onChange={selectFiles}
-        aria-describedby={`${inputId}-hint`}
-        className="mt-2 block w-full min-w-0 rounded-xl border border-dashed border-white/20 p-3 text-sm text-on-surface-variant file:mr-3 file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-on-primary" />
-      <p id={`${inputId}-hint`} className="mt-2 text-xs leading-relaxed text-on-surface-variant">
-        Local selection only. Nothing is uploaded or stored. Upload progress and retry will be available when storage is connected.
-      </p>
+      <FileDropZone
+        label="Choose files — optional"
+        prompt="Drag and drop private files here"
+        hint="50 MB per file (50,000,000 bytes). Drop multiple files or choose files. Local selection only; nothing is uploaded or stored."
+        onFiles={selectFiles}
+      />
+      {rejectedNames.length > 0 && (
+        <p role="alert" className="mt-3 break-words text-sm text-red-300">
+          Over 50 MB: {rejectedNames.join(", ")}. Add an external download link for these files instead.
+        </p>
+      )}
       <p role="status" className="mt-5 text-sm text-primary">
         {attachments.length} files selected · {formatBytes(totalBytes)}
       </p>

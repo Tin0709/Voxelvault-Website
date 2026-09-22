@@ -1,7 +1,7 @@
-import { useId, useState } from "react";
+import { useState } from "react";
+import FileDropZone from "../ui/FileDropZone";
 
 function PostMediaEditor({ images, onChange, onAddFiles }) {
-  const inputId = useId();
   const [activeIndex, setActiveIndex] = useState(0);
 
   const selectedIndex = Math.min(activeIndex, Math.max(images.length - 1, 0));
@@ -56,27 +56,13 @@ function PostMediaEditor({ images, onChange, onAddFiles }) {
         </div>
       )}
 
-      <div className="mt-5">
-        <label htmlFor={inputId} className="text-sm font-medium">
-          Add images
-        </label>
-
-        <input
-          id={inputId}
-          type="file"
-          multiple
-          accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
-          onChange={(event) => {
-            onAddFiles(Array.from(event.target.files ?? []));
-            event.target.value = "";
-          }}
-          className="mt-2 block w-full rounded-xl border border-dashed border-white/20 p-3 text-sm text-on-surface-variant file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-on-primary"
-        />
-
-        <p className="mt-2 text-xs text-on-surface-variant">
-          JPG, PNG, WebP, AVIF or GIF. Local preview only.
-        </p>
-      </div>
+      <FileDropZone
+        label="Add images"
+        prompt="Drag and drop images here"
+        hint="JPG, PNG, WebP, AVIF or GIF. Up to 50 MB per image. Drop multiple images or choose files. Local preview only."
+        accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+        onFiles={onAddFiles}
+      />
 
       {images.length > 0 && (
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">

@@ -17,6 +17,7 @@ const emptyCreation = {
   originalSource: "",
   creditUrl: "",
   attachments: [],
+  externalDownloads: [],
 };
 
 function CreatePostPage() {

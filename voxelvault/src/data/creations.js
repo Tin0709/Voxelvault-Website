@@ -121,6 +121,7 @@ export const creations = Object.entries(files)
       originalSource: info.originalSource ?? "",
       creditUrl: info.creditUrl ?? "",
       attachments: [],
+      externalDownloads: [],
     };
   })
   .sort((a, b) => a.title.localeCompare(b.title));

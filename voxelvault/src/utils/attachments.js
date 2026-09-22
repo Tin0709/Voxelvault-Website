@@ -30,3 +30,8 @@ export function safeCreditUrl(value) {
     return null;
   }
 }
+export const MAX_UPLOAD_BYTES = 50_000_000;
+
+export function exceedsUploadLimit(file) {
+  return file.size > MAX_UPLOAD_BYTES;
+}

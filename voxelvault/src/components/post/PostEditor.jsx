@@ -4,7 +4,8 @@ import PostGallery from "./PostGallery";
 import PostMediaEditor from "./PostMediaEditor";
 import PostAttachmentsEditor from "./PostAttachmentsEditor";
 import PostCredits from "./PostCredits";
-import { formatBytes, safeCreditUrl } from "../../utils/attachments";
+import ExternalDownloadsEditor from "./ExternalDownloadsEditor";
+import { exceedsUploadLimit, formatBytes, safeCreditUrl } from "../../utils/attachments";
 
 const categories = [
   "architecture",
@@ -34,6 +35,7 @@ function PostEditor({ creation, mode = "edit" }) {
     originalCreator: creation.originalCreator ?? "",
     originalSource: creation.originalSource ?? "",
     creditUrl: creation.creditUrl ?? "",
+    externalDownloads: (creation.externalDownloads ?? []).map((link) => ({ ...link })),
     attachments: (creation.attachments ?? []).map((attachment) => ({ ...attachment })),
 
     gallery: creation.gallery?.length
@@ -60,6 +62,22 @@ function PostEditor({ creation, mode = "edit" }) {
   const backUrl = isCreating
     ? "/"
     : `/creations/${encodeURIComponent(creation.id)}`;
+  useEffect(() => {
+    // A misplaced file drop must not navigate away and destroy the draft.
+    function preventFileNavigation(event) {
+      if (Array.from(event.dataTransfer?.types ?? []).includes("Files")) {
+        event.preventDefault();
+        if (event.type === "dragover") event.dataTransfer.dropEffect = "none";
+      }
+    }
+    window.addEventListener("dragover", preventFileNavigation);
+    window.addEventListener("drop", preventFileNavigation);
+    return () => {
+      window.removeEventListener("dragover", preventFileNavigation);
+      window.removeEventListener("drop", preventFileNavigation);
+    };
+  }, []);
+
   useEffect(() => {
     isMounted.current = true;
     const urls = objectUrls.current;
@@ -103,6 +121,11 @@ function PostEditor({ creation, mode = "edit" }) {
     clearPreview();
   }
 
+  function updateExternalDownloads(externalDownloads) {
+    setDraft((current) => ({ ...current, externalDownloads }));
+    clearPreview();
+  }
+
   function updateGallery(images) {
     const retainedUrls = new Set(images.map((image) => image.src));
 
@@ -132,6 +155,11 @@ function PostEditor({ creation, mode = "edit" }) {
 
     for (const file of files) {
       if (!isMounted.current) return;
+
+      if (exceedsUploadLimit(file)) {
+        rejectedNames.push(`${file.name} (over 50 MB)`);
+        continue;
+      }
 
       if (!allowedExtension.test(file.name)) {
         rejectedNames.push(file.name);
@@ -215,6 +243,16 @@ function PostEditor({ creation, mode = "edit" }) {
       return;
     }
 
+    const externalDownloads = draft.externalDownloads.map((link) => ({
+      ...link, name: link.name.trim(), url: link.url.trim(),
+    }));
+    for (const [index, link] of externalDownloads.entries()) {
+      if (!link.name || !safeCreditUrl(link.url)) {
+        setError(`External link ${index + 1} needs a name and a valid HTTP or HTTPS URL.`);
+        return;
+      }
+    }
+
     setError("");
 
     setPreview({
@@ -223,6 +261,7 @@ function PostEditor({ creation, mode = "edit" }) {
       originalCreator: draft.originalCreator.trim(),
       originalSource: draft.originalSource.trim(),
       creditUrl,
+      externalDownloads,
     });
   }
 
@@ -348,6 +387,7 @@ function PostEditor({ creation, mode = "edit" }) {
               onAdd={addAttachments}
               onRemove={removeAttachment}
             />
+            <ExternalDownloadsEditor links={draft.externalDownloads} onChange={updateExternalDownloads} />
 
             <section className={`${panelClass} space-y-5`}>
               <h2 className="font-headline-lg text-xl">Source & credit</h2>
@@ -358,7 +398,7 @@ function PostEditor({ creation, mode = "edit" }) {
               {[
                 ["originalCreator", "Original creator", "Name of the original author"],
                 ["originalSource", "Original source", "Website, project or collection"],
-                ["creditUrl", "Credit URL", "https://..."],
+                ["creditUrl", "Original post / Credit URL", "https://..."],
               ].map(([name, label, placeholder]) => (
                 <label key={name} className="block text-sm">
                   {label}
@@ -464,6 +504,17 @@ function PostEditor({ creation, mode = "edit" }) {
             </p>
             <ul className="mt-3 space-y-2 text-sm">
               {preview.attachments.map((file) => <li key={file.id} className="break-words">{file.originalName} · {formatBytes(file.sizeBytes)}</li>)}
+            </ul>
+            <h3 className="mt-6 font-headline-lg text-xl">External downloads · Owner preview</h3>
+            <p className="mt-2 text-sm text-on-surface-variant">Links only; files remain on the external service. These links have not been saved or verified.</p>
+            {preview.externalDownloads.length === 0 && <p className="mt-3 text-sm text-on-surface-variant">No external links added.</p>}
+            <ul className="mt-3 space-y-3 text-sm">
+              {preview.externalDownloads.map((link) => (
+                <li key={link.id} className="break-words">
+                  <a href={safeCreditUrl(link.url)} target="_blank" rel="noreferrer" className="text-primary hover:underline">{link.name} ↗</a>
+                  <p className="mt-1 break-all text-xs text-on-surface-variant">{link.url}</p>
+                </li>
+              ))}
             </ul>
           </div>
         </section>
