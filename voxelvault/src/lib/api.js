@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { notify } from './notifications';
 const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 
 async function headers() {
@@ -8,9 +9,18 @@ async function headers() {
   return data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {};
 }
 export async function api(path, options = {}) {
-  const response = await fetch(`${base}/api${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...await headers(), ...options.headers } });
+  const response = await fetch(`${base}/api${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...await headers(), ...options.headers } }).catch(error=>{
+    if (options.method && options.method !== 'GET' && error.name !== 'AbortError') notify('Check your connection and try again.','error');
+    throw error;
+  });
   const body = await response.json().catch(() => ({ error: 'API unavailable. Start the backend server.' }));
-  if (!response.ok) throw new Error(body.error || 'Request failed');
+  if (!response.ok) {
+    if (options.method && options.method !== 'GET') notify(body.error || 'Request failed','error');
+    throw new Error(body.error || 'Request failed');
+  }
+  if (options.method === 'DELETE') notify('The post and its files have been removed.','success','Post deleted');
+  if (options.method === 'POST' && path.startsWith('/posts/')) notify('Your changes are saved and your post is ready to view.','success','Post saved');
+  if (options.method === 'POST' && path === '/me/profile') notify('Your profile changes have been saved.','success','Profile updated');
   return body;
 }
 export async function uploadFile(file, kind, onProgress) {
@@ -22,12 +32,12 @@ export async function uploadFile(file, kind, onProgress) {
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
     xhr.timeout = 300000;
     xhr.upload.onprogress = (event) => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
-    xhr.onerror = () => reject(new Error('Upload failed. Check your connection and retry.'));
-    xhr.ontimeout = () => reject(new Error('Upload timed out. Retry this file.'));
+    xhr.onerror = () => {notify('Upload failed. Check your connection and retry.','error');reject(new Error('Upload failed. Check your connection and retry.'));};
+    xhr.ontimeout = () => {notify('Upload timed out. Retry this file.','error');reject(new Error('Upload timed out. Retry this file.'));};
     xhr.onload = () => {
       let body; try { body = JSON.parse(xhr.responseText); } catch { reject(new Error('Upload service unavailable')); return; }
-      if (xhr.status >= 200 && xhr.status < 300) resolve(body);
-      else reject(new Error(body.error || 'Upload failed'));
+      if (xhr.status >= 200 && xhr.status < 300) {notify(`${file.name} is stored successfully.`,'success','Upload complete');resolve(body);}
+      else {notify(body.error || 'Upload failed','error');reject(new Error(body.error || 'Upload failed'));}
     };
     xhr.send(file);
   });
@@ -38,5 +48,6 @@ export async function downloadFile(file) {
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a'); link.href = url; link.download = file.originalName; link.click();
+  notify(`${file.originalName} has been sent to your browser.`,'success','Download ready');
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }

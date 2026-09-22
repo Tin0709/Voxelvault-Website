@@ -96,6 +96,9 @@ test('API never exposes private files or external links to another user',async()
     assert.deepEqual((await mine.json()).posts,[]);
     assert.equal((await fetch(`${base}/api/posts?mine=true`,{headers:{Authorization:'Bearer invalid'}})).status,401);
     assert.equal((await fetch(`${base}/api/uploads?kind=attachment&name=x`,{method:'POST',body:'x'})).status,401);
+    assert.equal((await fetch(`${base}/api/me/categories`)).status,401);
+    assert.deepEqual(await (await fetch(`${base}/api/me/categories`,{headers:{Authorization:'Bearer owner'}})).json(),{categories:['art']});
+    assert.deepEqual(await (await fetch(`${base}/api/me/categories`,{headers:{Authorization:'Bearer other'}})).json(),{categories:[]});
   });
 });
 test('API configuration failures and origin boundaries are explicit',async()=>{

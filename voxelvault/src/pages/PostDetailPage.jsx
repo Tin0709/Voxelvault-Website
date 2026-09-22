@@ -8,6 +8,7 @@ import RequestState from "../components/ui/RequestState";
 import { formatBytes, safeCreditUrl } from "../utils/attachments";
 import RelatedCreations from "../components/post/RelatedCreations";
 import PostCredits from "../components/post/PostCredits";
+import { notify } from '../lib/notifications';
 
 function PostDetailPage() {
   const { id } = useParams();
@@ -29,8 +30,10 @@ function PostDetailPage() {
     try {
       await navigator.clipboard.writeText(window.location.href);
       setShareResult({ id, message: "Link copied!" });
+      notify('The post link is on your clipboard.','success','Link copied');
     } catch {
       setShareResult({ id, message: "Please copy the link from your address bar." });
+      notify('Please copy the link from your address bar.','info');
     }
   }
 

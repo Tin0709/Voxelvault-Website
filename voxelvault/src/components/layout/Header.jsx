@@ -1,131 +1,38 @@
-import { Link, NavLink } from "react-router";
-import { useState } from "react";
-import { useAuth } from "../../auth/AuthContext";
+import { Link, NavLink, useLocation } from 'react-router';
+import { useState } from 'react';
+import { useAuth } from '../../auth/AuthContext';
+import Brand from '../ui/Brand';
+import { notify } from '../../lib/notifications';
 
-function Header({ searchQuery, onSearchChange }) {
+export default function Header({ searchQuery, onSearchChange }) {
   const { user, signOut } = useAuth();
-  const [error, setError] = useState('');
-  return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-background/95 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-5 px-6 py-4 lg:px-10">
-        <Link
-          to="/"
-          className="flex shrink-0 items-center gap-3"
-          aria-label="VoxelVault home"
-        >
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-on-primary">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" />
-              <path d="m4 7.5 8 4.5 8-4.5M12 12v9" />
-            </svg>
-          </span>
-
-          <span className="font-headline-lg text-2xl tracking-tight">
-            VoxelVault
-          </span>
-        </Link>
-
-        <nav
-          aria-label="Main navigation"
-          className="ml-auto flex flex-wrap items-center gap-2 sm:ml-4"
-        >
-          <NavLink
-            to="/"
-            end
-            className={({ isActive }) =>
-              `rounded-full px-4 py-2.5 text-sm font-medium transition ${
-                isActive
-                  ? "bg-white/5 text-primary"
-                  : "text-on-surface-variant hover:text-primary"
-              }`
-            }
-          >
-            Explore
-          </NavLink>
-
-          <NavLink
-            to="/my-posts"
-            className={({ isActive }) =>
-              `rounded-full px-4 py-2.5 text-sm font-medium transition ${
-                isActive
-                  ? "bg-white/5 text-primary"
-                  : "text-on-surface-variant hover:text-primary"
-              }`
-            }
-          >
-            My Posts
-          </NavLink>
-
-          <NavLink
-            to="/create"
-            className={({ isActive }) =>
-              `inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-on-primary transition hover:opacity-90 ${
-                isActive
-                  ? "ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
-                  : ""
-              }`
-            }
-          >
-            <span aria-hidden="true">+</span>
-            Create
-          </NavLink>
-        </nav>
-
-        <div
-          role="search"
-          className="order-last w-full sm:order-none sm:ml-auto sm:w-auto sm:max-w-md sm:flex-1"
-        >
-          <label htmlFor="creation-search" className="sr-only">
-            Search creations
-          </label>
-
-          <div className="relative">
-            <svg
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              aria-hidden="true"
-            >
-              <circle cx="10.5" cy="10.5" r="6.5" />
-              <path d="m16 16 4.5 4.5" />
-            </svg>
-
-            <input
-              id="creation-search"
-              type="search"
-              value={searchQuery}
-              onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Search worlds, builds, inspiration..."
-              className="w-full rounded-full border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-sm text-on-surface outline-none transition placeholder:text-on-surface-variant focus:border-primary focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-        </div>
-        {user && <NavLink to="/profile" className={({isActive}) => `shrink-0 rounded-full px-4 py-2.5 text-sm ${isActive ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:text-primary'}`}>Profile</NavLink>}
-        {user ? <button type="button" onClick={async () => {
-          try { setError(''); await signOut(); } catch (error) { setError(error.message); }
-        }} className="shrink-0 rounded-full border border-white/15 px-4 py-2.5 text-sm">Sign out</button> : <Link
-          to="/login"
-          className="shrink-0 rounded-full border border-white/15 px-4 py-2.5 text-sm font-medium text-on-surface transition hover:border-primary/40 hover:text-primary"
-        >
-          Sign in
-        </Link>}
-        {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
+  const location = useLocation();
+  const [openAt,setOpenAt]=useState(null);
+  const [busy,setBusy]=useState(false);
+  const open = openAt === location.key;
+  const navClass=({isActive})=>`rounded-full px-4 py-2.5 text-sm transition ${isActive?'bg-primary/10 text-primary':'text-on-surface-variant hover:bg-white/5 hover:text-primary'}`;
+  async function logout() {
+    setBusy(true);
+    try { await signOut();setOpenAt(null);notify('You have signed out.'); }
+    catch(error) {notify(error.message,'error');} finally {setBusy(false);}
+  }
+  return <header className="sticky top-0 z-50 border-b border-white/10 bg-background/95 backdrop-blur-xl" onKeyDown={e=>{if(e.key==='Escape'){setOpenAt(null);document.getElementById('navigation-toggle')?.focus();}}}>
+    <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-10">
+      <Link to="/" aria-label="VoxelVault home"><Brand /></Link>
+      <button id="navigation-toggle" type="button" aria-expanded={open} aria-controls="main-navigation" aria-label={open?'Close navigation':'Open navigation'} onClick={()=>setOpenAt(open?null:location.key)} className="ml-auto flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 text-primary xl:hidden">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d={open?'M6 6l12 12M6 18L18 6':'M4 6h16M4 12h16M4 18h16'} /></svg>
+      </button>
+      <div role="search" className="order-3 w-full min-w-0 xl:order-2 xl:ml-auto xl:w-auto xl:max-w-md xl:flex-1">
+        <label htmlFor="creation-search" className="sr-only">Search creations</label>
+        <div className="relative"><span aria-hidden="true" className="absolute left-4 top-3 text-on-surface-variant">⌕</span><input id="creation-search" type="search" value={searchQuery} onChange={e=>{setOpenAt(null);onSearchChange(e.target.value);}} placeholder="Search worlds, builds, inspiration…" className="w-full rounded-full border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
       </div>
-    </header>
-  );
+      <nav id="main-navigation" aria-label="Main navigation" className={`${open?'flex vault-menu-enter':'hidden'} order-4 w-full flex-wrap items-center gap-2 border-t border-white/10 pt-3 xl:order-1 xl:ml-3 xl:flex xl:w-auto xl:border-0 xl:pt-0`}>
+        <NavLink to="/" end className={navClass} onClick={()=>setOpenAt(null)}>Explore</NavLink>
+        <NavLink to="/my-posts" className={navClass} onClick={()=>setOpenAt(null)}>My Posts</NavLink>
+        <NavLink to="/create" onClick={()=>setOpenAt(null)} className="vault-action rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-on-primary">+ Create</NavLink>
+        {user && <NavLink to="/profile" className={navClass} onClick={()=>setOpenAt(null)}>Profile</NavLink>}
+        {user ? <button type="button" disabled={busy} onClick={logout} className="rounded-full border border-white/15 px-4 py-2.5 text-sm disabled:opacity-50">{busy?'Signing out…':'Sign out'}</button> : <NavLink to="/login" className={navClass} onClick={()=>setOpenAt(null)}>Sign in</NavLink>}
+      </nav>
+    </div>
+  </header>;
 }
-
-export default Header;

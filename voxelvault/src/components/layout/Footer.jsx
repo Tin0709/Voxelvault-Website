@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import Brand from '../ui/Brand';
 
 function Footer() {
   function scrollToTop() {
@@ -21,7 +22,7 @@ function Footer() {
               to="/"
               className="font-headline-lg text-xl tracking-tight text-on-surface"
             >
-              VoxelVault
+              <Brand />
             </Link>
 
             <p className="mt-2 max-w-sm text-sm leading-relaxed text-on-surface-variant">

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { api, uploadFile } from "../../lib/api";
+import { notify } from '../../lib/notifications';
+import { useApi } from '../../lib/useApi';
 import PostGallery from "./PostGallery";
 import PostMediaEditor from "./PostMediaEditor";
 import PostAttachmentsEditor from "./PostAttachmentsEditor";
@@ -24,6 +26,10 @@ const inputClass =
 
 function PostEditor({ creation, mode = "edit" }) {
   const navigate = useNavigate();
+  const { data: personalCategories } = useApi('/me/categories');
+  const previewRef = useRef(null);
+  const [previewVersion, setPreviewVersion] = useState(0);
+  useEffect(() => { if (previewVersion) previewRef.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'}); }, [previewVersion]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [uploadProgress, setUploadProgress] = useState({});
@@ -145,6 +151,7 @@ function PostEditor({ creation, mode = "edit" }) {
   }
 
   function addAttachments(attachments) {
+    notify(`${attachments.length} file(s) added to your draft.`, 'info');
     setDraft((current) => ({
       ...current,
       attachments: [...current.attachments, ...attachments],
@@ -153,6 +160,7 @@ function PostEditor({ creation, mode = "edit" }) {
   }
 
   function removeAttachment(id) {
+    notify('File removed from your draft. Save to apply changes.', 'info');
     setDraft((current) => ({
       ...current,
       attachments: current.attachments.filter((attachment) => attachment.id !== id),
@@ -242,6 +250,7 @@ function PostEditor({ creation, mode = "edit" }) {
     );
 
     if (availableImages.length > 0) {
+      notify(`${availableImages.length} image(s) added to your draft.`, 'info');
       setDraft((current) => {
         const gallery = [...current.gallery, ...availableImages];
 
@@ -267,6 +276,7 @@ function PostEditor({ creation, mode = "edit" }) {
     event.preventDefault();
 
     if (draft.gallery.length === 0) {
+      notify('Please add at least one image.', 'error');
       setError("Please add at least one image.");
       return;
     }
@@ -281,6 +291,7 @@ function PostEditor({ creation, mode = "edit" }) {
       setError("Credit URL needs a valid HTTP or HTTPS link.");
       return;
     }
+    if (!draft.category.trim()) { setError('Please enter a category.'); notify('Please enter a category.','error'); return; }
 
     const externalDownloads = draft.externalDownloads.map((link) => ({
       ...link, name: link.name.trim(), url: link.url.trim(),
@@ -294,6 +305,8 @@ function PostEditor({ creation, mode = "edit" }) {
 
     setError("");
 
+    setPreviewVersion(value => value + 1);
+    notify("Your preview is ready. Publish to save your post.", "info", "Preview updated");
     setPreview({
       ...draft,
       title: draft.title.trim(),
@@ -336,12 +349,7 @@ function PostEditor({ creation, mode = "edit" }) {
             </p>
           </div>
 
-          <button
-            type="submit"
-            className="rounded-full bg-primary px-6 py-3 text-sm font-medium text-on-primary transition hover:opacity-90"
-          >
-            {isCreating ? "Preview post" : "Preview changes"}
-          </button>
+
         </div>
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
@@ -387,18 +395,9 @@ function PostEditor({ creation, mode = "edit" }) {
 
               <label className="block text-sm">
                 Category
-                <select
-                  name="category"
-                  value={draft.category}
-                  onChange={updateField}
-                  className={`${inputClass} capitalize`}
-                >
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
+                <input name="category" value={draft.category} onChange={updateField} list="post-categories" required maxLength={80} className={inputClass} placeholder="Choose or type your own category" />
+                <datalist id="post-categories">{[...new Set([...categories,...(personalCategories?.categories ?? [])])].map(category=><option key={category} value={category} />)}</datalist>
+                <span className="mt-2 block text-xs text-on-surface-variant">Choose a suggestion or type your own. Saved categories are available on your next post.</span>
               </label>
             </section>
 
@@ -483,13 +482,24 @@ function PostEditor({ creation, mode = "edit" }) {
             {error}
           </p>
         )}
+        <div className="mt-8 flex justify-end border-t border-white/10 pt-6">
+          <button
+            type="submit"
+            className="vault-action rounded-full bg-primary px-6 py-3 text-sm font-medium text-on-primary transition hover:opacity-90"
+          >
+            {isCreating ? "Preview post" : "Preview changes"}
+          </button>
+        </div>
         </fieldset>
       </form>
 
       {preview && (
         <section
+          key={previewVersion}
+          ref={previewRef}
+          style={{scrollMarginTop:180}}
           aria-labelledby="editor-preview-title"
-          className="mt-10 rounded-2xl border border-primary/30 bg-primary/5 p-6 sm:p-8"
+          className="vault-preview mt-10 rounded-2xl border border-primary/30 bg-primary/5 p-6 sm:p-8"
         >
           <p role="status" className="text-sm text-primary">
             Preview updated — nothing has been saved.
@@ -566,7 +576,8 @@ function PostEditor({ creation, mode = "edit" }) {
               </li>)}
             </ul>
             {saveError && <p role="alert" className="mt-4 text-red-300">{saveError}</p>}
-            <button type="button" disabled={saving} onClick={savePost} className="mt-5 rounded-full bg-primary px-6 py-3 text-sm text-on-primary disabled:opacity-50">
+            <button type="button" disabled={saving} onClick={savePost} className="vault-action mt-5 inline-flex items-center gap-3 rounded-full bg-primary px-6 py-3 text-sm text-on-primary disabled:opacity-50">
+              {saving && <span aria-hidden="true" className="vault-spinner !h-4 !w-4 !border-on-primary/30 !border-t-on-primary" />}
               {saving ? 'Uploading and saving…' : saveError ? 'Retry save' : isCreating ? 'Publish post' : 'Save changes'}
             </button>
           </div>

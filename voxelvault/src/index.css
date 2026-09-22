@@ -23,3 +23,26 @@ body {
 ::-webkit-scrollbar {
   display: none;
 }
+
+@keyframes vault-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes vault-spin { to { transform: rotate(360deg); } }
+@keyframes vault-out { to { opacity: 0; transform: translateY(16px) scale(.98); } }
+.vault-route { animation: vault-enter .25s ease-out; }
+.vault-card-enter { animation: vault-enter .48s cubic-bezier(.2,.7,.2,1) both; }
+.vault-preview, .vault-menu-enter { animation: vault-enter .35s ease-out both; }
+.vault-spinner { width: 28px; height: 28px; border: 2px solid #68dba933; border-top-color: #68dba9; border-right-color: #68dba9; border-radius: 50%; animation: vault-spin .85s linear infinite; }
+.vault-loading { animation: vault-enter .25s ease-out; }
+.vault-action { transition: transform .18s ease, box-shadow .18s ease, background .18s ease; }
+.vault-action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 24px #68dba92b; }
+.vault-action:active:not(:disabled) { transform: scale(.96); box-shadow: 0 0 0 5px #68dba91a; }
+.vault-action:disabled { cursor: wait; opacity: .65; }
+.vault-toast { pointer-events: auto; display:flex; align-items:flex-start; gap:12px; padding:18px; border:1px solid #68dba933; border-bottom:2px solid #68dba9; border-radius:16px; background:#131817f5; backdrop-filter:blur(16px); box-shadow:0 16px 40px #0008,0 0 22px #68dba912; animation:vault-enter .3s ease-out; }
+.vault-toast-out { animation:vault-out .22s ease-in forwards; }
+.toast-icon { display:flex; align-items:center; justify-content:center; flex-shrink:0; width:32px; height:32px; border-radius:50%; background:#68dba91a; color:#68dba9; box-shadow:0 0 18px #68dba919; }
+.vault-toast-error { border-color:#fca5a555; border-bottom-color:#fca5a5; }
+.vault-toast-error .toast-icon { color:#fca5a5; background:#fca5a51a; }
+:focus-visible { outline:2px solid #68dba9; outline-offset:3px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.01ms !important; animation-delay:0ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
+  .vault-action:hover:not(:disabled), .vault-action:active:not(:disabled) { transform:none; }
+}

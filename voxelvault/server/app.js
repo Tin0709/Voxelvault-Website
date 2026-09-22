@@ -165,6 +165,16 @@ const server = http.createServer(async (req, res) => {
       const user = await userFor(req,true);
       json(res,200,checked(await db.rpc('storage_usage',{p_owner:user.id}))); return;
     }
+    if (path === '/api/me/categories' && req.method === 'GET') {
+      const user = await userFor(req,true);
+      const categories = new Set();
+      for (let offset=0;;offset+=1000) {
+        const rows = checked(await db.from('posts').select('category').eq('owner_id',user.id).order('id').range(offset,offset+999));
+        rows.forEach(row=>categories.add(row.category));
+        if (rows.length<1000) break;
+      }
+      json(res,200,{categories:[...categories].sort()}); return;
+    }
     if (path === '/api/uploads' && req.method === 'POST') { await upload(req,res,await userFor(req,true),url); return; }
     if (/^\/api\/files\/[^/]+$/.test(path) && req.method === 'GET') {
       const user = await userFor(req,true);

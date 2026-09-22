@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../auth/AuthContext';
 import FileDropZone from '../components/ui/FileDropZone';
 import RequestState from '../components/ui/RequestState';
+import { notify } from '../lib/notifications';
 
 const inputClass = 'mt-2 w-full rounded-xl border border-white/20 bg-background px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-60';
 const buttonClass = 'rounded-full bg-primary px-6 py-3 text-sm font-medium text-on-primary transition hover:opacity-90 disabled:opacity-50';
@@ -66,6 +67,7 @@ function ProfileForm({ initial }) {
     try {
       const { error } = await supabase.auth.updateUser({email:email.trim()}, {emailRedirectTo:`${window.location.origin}/login`});
       if (error) throw error;
+      notify('Check your inbox to confirm your new email address.','info','Confirmation requested');
       setEmailMessage('Check your inbox to confirm the change. You may need to confirm both your current and new email addresses. Your sign-in email stays unchanged until confirmation.');
     } catch(error) { setEmailError(error.message); }
     finally { setEmailBusy(false); }

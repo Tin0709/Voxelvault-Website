@@ -3,6 +3,7 @@ import { Link, Navigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { supabase, authProviders } from "../lib/supabase";
 import { getOAuthError } from "../utils/oauthError";
+import { notify } from '../lib/notifications';
 
 const inputClass =
   "mt-2 w-full rounded-xl border border-white/10 bg-background px-4 py-3 text-sm text-on-surface outline-none transition placeholder:text-on-surface-variant/60 focus:border-primary focus:ring-2 focus:ring-primary/15";
@@ -67,9 +68,10 @@ function AuthPage({ mode = "login" }) {
         ? await supabase.auth.signUp({ email: form.email.trim(), password: form.password, options: { data: { name: form.name.trim() }, emailRedirectTo: `${window.location.origin}/login` } })
         : await supabase.auth.signInWithPassword({ email: form.email.trim(), password: form.password });
       if (result.error) throw result.error;
+      notify(isRegister && !result.data.session ? 'Check your email to confirm your account.' : 'Welcome to your vault.','success',isRegister?'Account created':'Signed in');
       if (isRegister && !result.data.session) setMessage('Check your email to confirm your account, then sign in.');
       setForm((current) => ({ ...current, password: '', confirmPassword: '' }));
-    } catch (error) { setError(error.message); } finally { setBusy(false); }
+    } catch (error) { setError(error.message); notify(error.message,'error'); } finally { setBusy(false); }
   }
 
   async function socialSignIn(provider) {
