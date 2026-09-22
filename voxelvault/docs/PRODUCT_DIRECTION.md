@@ -1,0 +1,57 @@
+# VoxelVault
+
+## Product contract
+
+VoxelVault stores personal content with a public image showcase. It supports Minecraft
+worlds, models, design work, documents and other content.
+
+- Posts, showcase images and optional source credit are public.
+- Attachments belong to the posting account. Only that account may download them.
+- `ownerId` identifies the posting account; `originalCreator`, `originalSource` and
+  `creditUrl` describe the original work independently. Credit never grants permissions.
+- A new account has zero posts, zero files and zero used bytes. Production data must
+  never fall back to development fixtures.
+- The current Explore design is the visual reference for other pages.
+
+## Current implementation
+
+React / Vite / Tailwind frontend with static development fixtures. There is no real
+authentication, upload, database, quota enforcement or persistence yet.
+
+Create/Edit separates public images, optional public credit and private file selection.
+Each selected attachment holds a local File, originalName, mimeType, extension,
+typeLabel, exact sizeBytes and status `selected`. Selection is not upload success.
+File metadata is browser supplied and must be verified by the backend later.
+Sizes display with decimal units (1 KB = 1,000 bytes). ZIP means archive, not world.
+No file contents are read into memory for attachment metadata or exposed as public URLs.
+The preview includes an explicitly private owner summary, not a public download list.
+Leaving or refreshing the editor discards the draft and selected files.
+
+The fixture's legacy creatorId/creator fields currently represent the demo poster;
+they are not proof of authorship or an authenticated identity.
+
+## Next stages
+
+1. Complete UI flows, mobile verification, unsaved-draft handling, empty/error states
+   and a shared category model for content beyond Minecraft.
+2. Connect Supabase Auth and session-aware personal routes.
+3. Implement profiles, posts, post_images, attachments and upload_sessions in PostgreSQL.
+4. Add genuine uploads with per-file progress, failure, retry, cancellation and
+   multipart support for large files. Never simulate successful uploads in production.
+5. Enforce owner-only download/update/delete in the backend; keep attachment objects
+   private. Reserve quota atomically for concurrent uploads, verify actual stored bytes,
+   and clean up abandoned uploads and objects from failed saves/deletions.
+6. Test and deploy the complete account/create/reload/download/edit/delete flow,
+   including direct API access attempts from a second account and quota reconciliation.
+
+Initial storage direction: Cloudflare R2 Standard. Storj is only an alternative to
+evaluate. Recheck actual provider terms before integration; no promise of perpetual
+free capacity or hundreds of GB. Provider allowance is shared across the website.
+
+## Completion criteria
+
+A new empty account can create a post with images, credit and multiple files;
+successful persistence is confirmed, content survives reload and appears in Explore
+and My Posts. The owner can download, edit and delete. Another account can view the
+showcase but cannot access attachments even through direct API requests. Deletion
+updates storage usage correctly.

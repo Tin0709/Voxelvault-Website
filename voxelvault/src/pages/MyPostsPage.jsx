@@ -119,7 +119,7 @@ function MyPostsPage() {
                   <p className="mt-3 text-xs text-on-surface-variant">
                     {creation.gallery?.length ?? 1} images
                     {" · "}
-                    {creation.downloads?.length ?? 0} download links
+                    {creation.attachments?.length ?? 0} private attachments
                   </p>
 
                   <div className="mt-auto flex flex-wrap gap-3 pt-6">

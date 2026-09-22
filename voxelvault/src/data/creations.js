@@ -94,19 +94,6 @@ export const creations = Object.entries(files)
     const creator = creators.find((item) => item.id === info.creatorId);
     const title = info.title ?? nameWithoutExtension;
 
-    const sourceDownloads =
-      info.downloads ??
-      (info.downloadUrl
-        ? [
-            {
-              name: "World files",
-              url: info.downloadUrl,
-              format: info.fileFormat ?? "",
-              size: info.fileSize ?? "",
-            },
-          ]
-        : []);
-
     return {
       id: filename,
       title,
@@ -123,24 +110,17 @@ export const creations = Object.entries(files)
       ],
 
       creatorId: creator?.id ?? null,
+      ownerId: creator?.id ?? null,
       creator: creator?.name ?? info.creator ?? "Unknown creator",
       location: info.location ?? "Sample collection",
       description: info.description ?? "",
       revisionNotes: info.revisionNotes ?? "",
       minecraftVersion: info.minecraftVersion ?? "",
 
-      downloads: sourceDownloads.map((download, index) => ({
-        id: download.id ?? `${filename}-download-${index + 1}`,
-        name: download.name ?? "",
-        url: download.url ?? "",
-        format: download.format ?? "",
-        size: download.size ?? "",
-      })),
-
-      // Giữ để tương thích với component cũ.
-      downloadUrl: info.downloadUrl ?? "",
-      fileFormat: info.fileFormat ?? "",
-      fileSize: info.fileSize ?? "",
+      originalCreator: info.originalCreator ?? "",
+      originalSource: info.originalSource ?? "",
+      creditUrl: info.creditUrl ?? "",
+      attachments: [],
     };
   })
   .sort((a, b) => a.title.localeCompare(b.title));

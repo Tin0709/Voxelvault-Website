@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import PostGallery from "./PostGallery";
 import PostMediaEditor from "./PostMediaEditor";
-import PostDownloadsEditor from "./PostDownloadsEditor";
-import PostDownloads from "./PostDownloads";
+import PostAttachmentsEditor from "./PostAttachmentsEditor";
+import PostCredits from "./PostCredits";
+import { formatBytes, safeCreditUrl } from "../../utils/attachments";
 
 const categories = [
   "architecture",
@@ -29,13 +30,11 @@ function PostEditor({ creation, mode = "edit" }) {
     minecraftVersion: creation.minecraftVersion ?? "",
     revisionNotes: creation.revisionNotes ?? "",
 
-    downloads: (creation.downloads ?? []).map((download, index) => ({
-      id: download.id ?? `${creation.id}-download-${index + 1}`,
-      name: download.name ?? "",
-      url: download.url ?? "",
-      format: download.format ?? "",
-      size: download.size ?? "",
-    })),
+    ownerId: creation.ownerId ?? null,
+    originalCreator: creation.originalCreator ?? "",
+    originalSource: creation.originalSource ?? "",
+    creditUrl: creation.creditUrl ?? "",
+    attachments: (creation.attachments ?? []).map((attachment) => ({ ...attachment })),
 
     gallery: creation.gallery?.length
       ? creation.gallery.map((image) => ({ ...image }))
@@ -88,12 +87,19 @@ function PostEditor({ creation, mode = "edit" }) {
     clearPreview();
   }
 
-  function updateDownloads(downloads) {
+  function addAttachments(attachments) {
     setDraft((current) => ({
       ...current,
-      downloads,
+      attachments: [...current.attachments, ...attachments],
     }));
+    clearPreview();
+  }
 
+  function removeAttachment(id) {
+    setDraft((current) => ({
+      ...current,
+      attachments: current.attachments.filter((attachment) => attachment.id !== id),
+    }));
     clearPreview();
   }
 
@@ -203,35 +209,10 @@ function PostEditor({ creation, mode = "edit" }) {
       return;
     }
 
-    const downloads = [];
-
-    for (const [index, download] of draft.downloads.entries()) {
-      const name = download.name.trim();
-      const url = download.url.trim();
-
-      if (!name || !url) {
-        setError(`Please enter a name and URL for file ${index + 1}.`);
-        return;
-      }
-
-      try {
-        const parsedUrl = new URL(url);
-
-        if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-          throw new Error("Unsupported protocol");
-        }
-      } catch {
-        setError(`File ${index + 1} needs a valid HTTP or HTTPS link.`);
-        return;
-      }
-
-      downloads.push({
-        ...download,
-        name,
-        url,
-        format: (download.format ?? "").trim(),
-        size: (download.size ?? "").trim(),
-      });
+    const creditUrl = draft.creditUrl.trim();
+    if (creditUrl && !safeCreditUrl(creditUrl)) {
+      setError("Credit URL needs a valid HTTP or HTTPS link.");
+      return;
     }
 
     setError("");
@@ -239,7 +220,9 @@ function PostEditor({ creation, mode = "edit" }) {
     setPreview({
       ...draft,
       title: draft.title.trim(),
-      downloads,
+      originalCreator: draft.originalCreator.trim(),
+      originalSource: draft.originalSource.trim(),
+      creditUrl,
     });
   }
 
@@ -265,8 +248,8 @@ function PostEditor({ creation, mode = "edit" }) {
 
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-on-surface-variant">
               {isCreating
-                ? "Share your images, tell their story, and add downloadable files."
-                : "Update your images, post details, and downloadable files."}
+                ? "Showcase your images, add source credit, and select private attachments."
+                : "Update your public showcase, source credit, and private attachments."}
             </p>
 
             <p className="mt-2 text-xs text-on-surface-variant">
@@ -360,10 +343,31 @@ function PostEditor({ creation, mode = "edit" }) {
           </div>
 
           <div className="min-w-0 space-y-6 lg:col-span-5">
-            <PostDownloadsEditor
-              downloads={draft.downloads}
-              onChange={updateDownloads}
+            <PostAttachmentsEditor
+              attachments={draft.attachments}
+              onAdd={addAttachments}
+              onRemove={removeAttachment}
             />
+
+            <section className={`${panelClass} space-y-5`}>
+              <h2 className="font-headline-lg text-xl">Source & credit</h2>
+              <p className="text-sm leading-relaxed text-on-surface-variant">
+                Optional public credit for the original work. The original creator may be
+                different from the account posting it. Credit does not grant access to attachments.
+              </p>
+              {[
+                ["originalCreator", "Original creator", "Name of the original author"],
+                ["originalSource", "Original source", "Website, project or collection"],
+                ["creditUrl", "Credit URL", "https://..."],
+              ].map(([name, label, placeholder]) => (
+                <label key={name} className="block text-sm">
+                  {label}
+                  <input name={name} type={name === "creditUrl" ? "url" : "text"}
+                    value={draft[name]} onChange={updateField} placeholder={placeholder}
+                    maxLength={name === "creditUrl" ? 2048 : 200} className={inputClass} />
+                </label>
+              ))}
+            </section>
 
             <section className={`${panelClass} space-y-5`}>
               <h2 className="font-headline-lg text-xl">
@@ -450,9 +454,17 @@ function PostEditor({ creation, mode = "edit" }) {
           </dl>
 
           <div className="mt-6">
-            <h3 className="mb-4 font-headline-lg text-xl">Downloads</h3>
-
-            <PostDownloads downloads={preview.downloads} />
+            <PostCredits {...preview} />
+          </div>
+          <div className="mt-6 rounded-xl border border-white/10 p-5">
+            <h3 className="font-headline-lg text-xl">Private attachments · Owner preview</h3>
+            <p className="mt-3 text-sm text-on-surface-variant">
+              {preview.attachments.length} files selected · {formatBytes(preview.attachments.reduce((total, file) => total + file.sizeBytes, 0))}.
+              {" "}These files are local only and have not been uploaded. This list is not part of the public showcase.
+            </p>
+            <ul className="mt-3 space-y-2 text-sm">
+              {preview.attachments.map((file) => <li key={file.id} className="break-words">{file.originalName} · {formatBytes(file.sizeBytes)}</li>)}
+            </ul>
           </div>
         </section>
       )}

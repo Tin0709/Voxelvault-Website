@@ -12,7 +12,11 @@ const emptyCreation = {
   image: "",
   alt: "",
   gallery: [],
-  downloads: [],
+  ownerId: null,
+  originalCreator: "",
+  originalSource: "",
+  creditUrl: "",
+  attachments: [],
 };
 
 function CreatePostPage() {

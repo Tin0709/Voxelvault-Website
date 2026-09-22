@@ -3,25 +3,25 @@ import { Link, useParams } from "react-router";
 import PostGallery from "../components/post/PostGallery";
 import { creations } from "../data/creations";
 import RelatedCreations from "../components/post/RelatedCreations";
-import PostDownloads from "../components/post/PostDownloads";
+import PostCredits from "../components/post/PostCredits";
 
 function PostDetailPage() {
   const { id } = useParams();
-  const [shareMessage, setShareMessage] = useState("");
+  const [shareResult, setShareResult] = useState(null);
+  const shareMessage = shareResult?.id === id ? shareResult.message : "";
 
   const creation = creations.find((item) => item.id === id);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
-    setShareMessage("");
   }, [id]);
 
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      setShareMessage("Link copied!");
+      setShareResult({ id, message: "Link copied!" });
     } catch {
-      setShareMessage("Please copy the link from your address bar.");
+      setShareResult({ id, message: "Please copy the link from your address bar." });
     }
   }
 
@@ -132,7 +132,7 @@ function PostDetailPage() {
               </span>
 
               <div className="min-w-0">
-                <p className="text-xs text-on-surface-variant">Created by</p>
+                <p className="text-xs text-on-surface-variant">Posted by</p>
                 {creation.creatorId ? (
                   <Link
                     to={`/creators/${encodeURIComponent(creation.creatorId)}`}
@@ -150,7 +150,7 @@ function PostDetailPage() {
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <h2 className="font-headline-lg text-xl">World & files</h2>
+            <h2 className="font-headline-lg text-xl">Post information</h2>
 
             <dl className="mt-5 space-y-4">
               {specifications.map(([label, value]) => (
@@ -162,9 +162,13 @@ function PostDetailPage() {
             </dl>
 
             <div className="mt-6 border-t border-white/10 pt-6">
-              <PostDownloads downloads={creation.downloads} />
+              <p className="text-sm leading-relaxed text-on-surface-variant">
+                Attachments are private to the account that owns this post.
+                File storage and account access are not connected in this demo.
+              </p>
             </div>
           </section>
+          <PostCredits {...creation} />
         </aside>
       </div>
       <RelatedCreations creation={creation} />

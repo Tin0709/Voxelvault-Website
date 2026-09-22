@@ -26,10 +26,10 @@ function PostMediaEditor({ images, onChange, onAddFiles }) {
     <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-headline-lg text-xl">Media gallery</h2>
+          <h2 className="font-headline-lg text-xl">Public image gallery</h2>
 
           <p className="mt-2 text-sm text-on-surface-variant">
-            Add images and choose a cover for your post.
+            Add images and choose a cover. Published images are public and can be saved by visitors.
           </p>
         </div>
 
