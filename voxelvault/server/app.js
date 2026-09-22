@@ -58,6 +58,18 @@ async function hydrate(post, owner = false) {
   return result;
 }
 
+async function profileFor(id) {
+  const profile = checked(await db.from('profiles').select('id,name,bio,country,avatar_upload_id,version').eq('id',id).maybeSingle());
+  if (!profile) throw fail(404,'Profile not found');
+  let avatarUrl = '';
+  if (profile.avatar_upload_id) {
+    const file = checked(await db.from('upload_sessions').select('object_key').eq('id',profile.avatar_upload_id).single());
+    avatarUrl = publicImage(file);
+  }
+  return { id:profile.id, name:profile.name, bio:profile.bio, country:profile.country, version:profile.version,
+    avatarId:profile.avatar_upload_id, avatarUrl, handle:profile.id.slice(0,8), initials:profile.name.slice(0,2).toUpperCase() };
+}
+
 async function removeObject(file) {
   if (file.provider === 'r2') {
     if (!r2) throw fail(503, 'R2 is not configured');
@@ -136,9 +148,18 @@ const server = http.createServer(async (req, res) => {
       json(res,200,{ posts: await Promise.all(posts.map((p) => hydrate(p, mine))), hasMore: posts.length === 50 }); return;
     }
     if (/^\/api\/profiles\/[^/]+$/.test(path) && req.method === 'GET') {
-      const profile = checked(await db.from('profiles').select('id,name,bio').eq('id', requireUuid(path.split('/').pop())).maybeSingle());
-      if (!profile) throw fail(404,'Profile not found');
-      json(res,200,{ ...profile, handle: profile.id.slice(0,8), initials: profile.name.slice(0,2).toUpperCase() }); return;
+      json(res,200,await profileFor(requireUuid(path.split('/').pop()))); return;
+    }
+    if (path === '/api/me/profile' && ['GET','POST'].includes(req.method)) {
+      const user = await userFor(req,true);
+      if (req.method === 'POST') {
+        const body = await jsonBody(req);
+        if (!body || typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length>50 || typeof body.bio !== 'string' || body.bio.length>1000 || typeof body.country !== 'string' || !/^([A-Z]{2})?$/.test(body.country) || !Number.isInteger(body.version) || body.version<0) throw fail(400,'Invalid profile');
+        const avatar = body.avatarId === null ? null : requireUuid(body.avatarId);
+        checked(await db.rpc('save_profile',{p_owner:user.id,p_name:body.name.trim(),p_bio:body.bio,p_country:body.country,p_avatar:avatar,p_version:body.version}));
+        await cleanup(user.id);
+      }
+      json(res,200,{...await profileFor(user.id),email:user.email}); return;
     }
     if (path === '/api/me/storage' && req.method === 'GET') {
       const user = await userFor(req,true);

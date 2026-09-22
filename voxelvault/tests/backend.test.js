@@ -78,5 +78,24 @@ test('migration, owner isolation, quota, publish, deletion and orphan cleanup', 
     const orphan=randomUUID(); await reserve(orphan,10);
     await pg.exec("update public.upload_sessions set created_at=now()-interval '25 hours'");
     assert.equal((await pg.query('select * from public.claim_cleanup($1)',[owner])).rows[0].status,'deleting');
+    await pg.exec(await readFile(new URL('../supabase/migrations/202609220002_profiles.sql',import.meta.url),'utf8'));
+    const avatar=randomUUID(); await reserve(avatar,80,'image');
+    await pg.query("update public.upload_sessions set status='ready',created_at=now()-interval '25 hours' where id=$1",[avatar]);
+    const profileSave=(asUser,version,photo=avatar)=>pg.query('select public.save_profile($1,$2,$3,$4,$5,$6)',[asUser,'New name','My bio','VN',photo,version]);
+    await assert.rejects(profileSave(other,0),/Invalid avatar/);
+    await profileSave(owner,0);
+    const profile=(await pg.query('select * from public.profiles where id=$1',[owner])).rows[0];
+    assert.equal(profile.name,'New name'); assert.equal(profile.country,'VN'); assert.equal(profile.avatar_upload_id,avatar);
+    await assert.rejects(profileSave(owner,0),/Profile changed/);
+    assert.equal((await pg.query('select * from public.claim_cleanup($1)',[owner])).rows.some(row=>row.id===avatar),false);
+    const avatarPost=randomUUID();
+    await pg.query("insert into public.posts(id,owner_id,title) values($1,$2,'Avatar isolation')",[avatarPost,owner]);
+    await assert.rejects(pg.query('update public.upload_sessions set post_id=$1 where id=$2',[avatarPost,avatar]),/Avatar cannot/);
+    await pg.exec('set role authenticated');
+    await assert.rejects(profileSave(owner,1),/permission denied/);
+    await assert.rejects(pg.query("update public.profiles set name='Other'"),/permission denied/);
+    await pg.exec('reset role');
+    await profileSave(owner,1,null);
+    assert.equal((await pg.query('select * from public.claim_cleanup($1)',[owner])).rows.some(row=>row.id===avatar),true);
   } finally { await pg.close(); }
 });

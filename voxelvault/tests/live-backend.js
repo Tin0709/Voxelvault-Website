@@ -92,9 +92,27 @@ try {
     }
   }
   console.log('PASS edits persist, stale edits rejected, deletion removes objects and releases quota');
+  if (process.argv.includes('--profiles')) {
+    const profile = await (await request('/me/profile',owner.token)).json();
+    const photo = await (await request('/uploads?kind=image&name=avatar.png',owner.token,{method:'POST',body:fixtures[0].bytes},201)).json();
+    const payload = {name:'Updated profile',bio:'Profile integration test',country:'VN',avatarId:photo.id,version:profile.version};
+    await request('/me/profile',null,{method:'POST',body:JSON.stringify(payload)},401);
+    await request('/me/profile',other.token,{method:'POST',body:JSON.stringify(payload)},409);
+    await request('/me/profile',owner.token,{method:'POST',body:JSON.stringify(payload)});
+    const updated = await (await request('/me/profile',owner.token)).json();
+    assert.equal(updated.name,payload.name); assert.equal(updated.country,'VN'); assert.equal(updated.avatarId,photo.id);
+    assert.equal((await fetch(updated.avatarUrl)).status,200);
+    const publicProfile = await (await request(`/profiles/${users[0]}`,null)).json();
+    assert.equal(publicProfile.email,undefined); assert.equal(publicProfile.avatarUrl,updated.avatarUrl);
+    await request('/me/profile',owner.token,{method:'POST',body:JSON.stringify(payload)},409);
+    await request('/me/profile',owner.token,{method:'POST',body:JSON.stringify({...payload,version:updated.version,avatarId:null})});
+    assert.equal((await (await request('/me/storage',owner.token)).json()).usedBytes,0);
+    console.log('PASS profile persistence, avatar ownership, public photo/private email and avatar removal quota');
+  }
 } finally {
   // Only IDs returned by createUser in this execution are eligible for cleanup.
   for (const ownerId of users) {
+    if (process.argv.includes('--profiles')) checked(await db.from('profiles').update({avatar_upload_id:null}).eq('id',ownerId));
     const files = checked(await db.from('upload_sessions').select('*').eq('owner_id', ownerId));
     for (const file of files) {
       if (file.provider === 'r2') await r2.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET, Key: file.object_key }));

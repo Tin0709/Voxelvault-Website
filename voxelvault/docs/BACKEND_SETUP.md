@@ -182,6 +182,19 @@ Chúng kiểm tra SQL và RLS của ứng dụng; không thay thế kiểm thử
 
 ## 9. Kiểm thử tích hợp với dịch vụ thật
 
+### Profile basics
+
+Chạy migration bổ sung `supabase/migrations/202609220002_profiles.sql` trong SQL Editor
+(không chạy lại initial), rồi khởi động lại API. Trang `/profile` cho phép sửa tên,
+quốc gia, bio và ảnh đại diện công khai tối đa 5 MB. Ảnh tính vào quota; ảnh cũ được
+dọn sau khi lưu thay đổi. Đổi email dùng Supabase Auth và cần xác nhận qua email;
+không lưu email vào bảng profiles công khai. Cần cấu hình email/SMTP để dùng luồng này.
+
+Sau migration có thể chạy `node tests/live-backend.js --run --profiles` để kiểm tra
+thêm lưu hồ sơ, phân quyền avatar, email riêng tư và trả quota khi gỡ ảnh.
+Đã chạy thành công trên Supabase thật ngày 22/09/2026; tài khoản và dữ liệu kiểm thử
+đã được dọn. Việc gửi/nhận email xác nhận vẫn cần kiểm tra bằng hộp thư của người dùng.
+
 Khi Vite (5173) và API (8787) đang chạy với cấu hình hiện tại:
 
 ```powershell

@@ -62,7 +62,7 @@ function CreatorProfilePage() {
               aria-hidden="true"
               className="flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-background bg-primary text-3xl font-semibold text-on-primary"
             >
-              {creator.initials}
+              {creator.avatarUrl ? <img src={creator.avatarUrl} alt="" className="h-full w-full rounded-2xl object-cover" /> : creator.initials}
             </div>
 
             <span className="rounded-full border border-white/10 bg-background px-4 py-2 text-sm text-on-surface-variant">

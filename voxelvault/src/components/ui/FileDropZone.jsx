@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from "react";
 
-function FileDropZone({ label, prompt, hint, accept, onFiles }) {
+function FileDropZone({ label, prompt, hint, accept, onFiles, multiple = true, disabled = false }) {
   const inputId = useId();
   const depth = useRef(0);
   const [dragging, setDragging] = useState(false);
@@ -19,6 +19,7 @@ function FileDropZone({ label, prompt, hint, accept, onFiles }) {
     event.preventDefault();
     event.stopPropagation();
     resetDrag();
+    if (disabled) return;
     if (!hasFiles(event)) return;
 
     // Read entries synchronously while the drop's data store is accessible.
@@ -72,7 +73,8 @@ function FileDropZone({ label, prompt, hint, accept, onFiles }) {
         <input
           id={inputId}
           type="file"
-          multiple
+          multiple={multiple}
+          disabled={disabled}
           accept={accept}
           aria-describedby={`${inputId}-hint ${inputId}-error`}
           onChange={(event) => {

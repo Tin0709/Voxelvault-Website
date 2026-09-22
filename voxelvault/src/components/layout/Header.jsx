@@ -113,6 +113,7 @@ function Header({ searchQuery, onSearchChange }) {
             />
           </div>
         </div>
+        {user && <NavLink to="/profile" className={({isActive}) => `shrink-0 rounded-full px-4 py-2.5 text-sm ${isActive ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:text-primary'}`}>Profile</NavLink>}
         {user ? <button type="button" onClick={async () => {
           try { setError(''); await signOut(); } catch (error) { setError(error.message); }
         }} className="shrink-0 rounded-full border border-white/15 px-4 py-2.5 text-sm">Sign out</button> : <Link
