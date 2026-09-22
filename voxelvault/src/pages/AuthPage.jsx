@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { supabase, authProviders } from "../lib/supabase";
+import { getOAuthError } from "../utils/oauthError";
 
 const inputClass =
   "mt-2 w-full rounded-xl border border-white/10 bg-background px-4 py-3 text-sm text-on-surface outline-none transition placeholder:text-on-surface-variant/60 focus:border-primary focus:ring-2 focus:ring-primary/15";
@@ -19,7 +20,7 @@ function AuthPage({ mode = "login" }) {
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('error_description') || '');
+  const [error, setError] = useState(() => getOAuthError(window.location));
   const [message, setMessage] = useState("");
 
   function updateField(event) {
