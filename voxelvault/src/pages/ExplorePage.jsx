@@ -2,7 +2,7 @@ import { useNavigate } from "react-router";
 import ExploreHero from "../components/explore/ExploreHero";
 import FilterBar from "../components/explore/FilterBar";
 import MasonryGrid from "../components/explore/MasonryGrid";
-import { useApi } from "../lib/useApi";
+import { usePostList } from "../lib/usePostList";
 
 function normalizeText(value) {
   return value
@@ -14,7 +14,7 @@ function normalizeText(value) {
 
 function ExplorePage({ searchQuery = "", activeCategory, onCategoryChange }) {
   const navigate = useNavigate();
-  const { data, loading, error } = useApi('/posts');
+  const { data, loading, error, loadingMore, loadMore } = usePostList();
   const creations = data?.posts ?? [];
 
   const searchTerms = normalizeText(searchQuery)
@@ -93,6 +93,7 @@ function ExplorePage({ searchQuery = "", activeCategory, onCategoryChange }) {
             navigate(`/creations/${encodeURIComponent(creation.id)}`)
           }
         />}
+        {data?.hasMore && <button type="button" disabled={loadingMore} onClick={loadMore} className="mt-8 rounded-full border border-primary/40 px-6 py-3 text-primary">{loadingMore ? 'Loading…' : 'Load more creations'}</button>}
       </section>
     </main>
   );

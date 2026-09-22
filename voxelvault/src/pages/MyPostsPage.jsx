@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { useApi } from "../lib/useApi";
+import { usePostList } from "../lib/usePostList";
 import RequestState from "../components/ui/RequestState";
 import { formatBytes } from "../utils/attachments";
 
@@ -14,7 +15,7 @@ function normalizeText(value) {
 
 function MyPostsPage() {
   const [query, setQuery] = useState("");
-  const { data, loading, error } = useApi('/posts?mine=true');
+  const { data, loading, error, loadingMore, loadMore } = usePostList('/posts?mine=true');
   const storage = useApi('/me/storage');
   const creations = data?.posts ?? [];
 
@@ -166,6 +167,7 @@ function MyPostsPage() {
           )}
         </div>
       )}
+      {data?.hasMore && <button type="button" disabled={loadingMore} onClick={loadMore} className="mt-8 rounded-full border border-primary/40 px-6 py-3 text-primary">{loadingMore ? 'Loading…' : 'Load more posts'}</button>}
     </main>
   );
 }

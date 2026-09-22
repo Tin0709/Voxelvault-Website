@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import MasonryGrid from "../components/explore/MasonryGrid";
 import { useApi } from "../lib/useApi";
+import { usePostList } from "../lib/usePostList";
 import RequestState from "../components/ui/RequestState";
 
 function CreatorProfilePage() {
@@ -9,7 +10,7 @@ function CreatorProfilePage() {
   const navigate = useNavigate();
 
   const { data: creator, loading, error } = useApi(`/profiles/${encodeURIComponent(creatorId)}`);
-  const posts = useApi(`/posts?creator=${encodeURIComponent(creatorId)}`);
+  const posts = usePostList(`/posts?creator=${encodeURIComponent(creatorId)}`);
   const creations = posts.data?.posts ?? [];
 
   useEffect(() => {
@@ -116,6 +117,7 @@ function CreatorProfilePage() {
           </div>
         )}
       </section>
+      {posts.data?.hasMore && <button type="button" disabled={posts.loadingMore} onClick={posts.loadMore} className="mt-8 rounded-full border border-primary/40 px-6 py-3 text-primary">{posts.loadingMore ? 'Loading…' : 'Load more posts'}</button>}
     </main>
   );
 }
