@@ -1,8 +1,9 @@
+import Icon, { FileIcon } from '../components/ui/Icon';
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import PostGallery from "../components/post/PostGallery";
 import { useApi } from "../lib/useApi";
-import { api, downloadFile } from "../lib/api";
+import { api, downloadFile, downloadArchive } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import RequestState from "../components/ui/RequestState";
 import { formatBytes, safeCreditUrl } from "../utils/attachments";
@@ -60,7 +61,7 @@ function PostDetailPage() {
   ].filter(([, value]) => Boolean(value));
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] flex-1 px-6 pb-16 lg:px-10">
+    <main className="vault-page-enter mx-auto w-full max-w-[1500px] flex-1 px-6 pb-16 lg:px-10">
       <div className="flex flex-wrap items-center justify-between gap-4 py-6">
         <nav
           aria-label="Breadcrumb"
@@ -92,13 +93,13 @@ function PostDetailPage() {
             onClick={copyLink}
             className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm transition hover:bg-white/10"
           >
-            Copy link ↗
+            <Icon name="link" className="mr-2 !h-4 !w-4"/>Share
           </button>
           {isOwner && <Link
             to={`/creations/${encodeURIComponent(creation.id)}/edit`}
             className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-on-primary transition hover:opacity-90"
           >
-            Edit post
+            <Icon name="edit" className="mr-2 !h-4 !w-4"/>Edit post
           </Link>}
           {isOwner && <button type="button" disabled={busy} className="rounded-full border border-red-300/30 px-4 py-2 text-sm text-red-300"
             onClick={async () => {
@@ -106,7 +107,7 @@ function PostDetailPage() {
               setBusy(true); setActionError('');
               try { await api(`/posts/${creation.id}`, { method: 'DELETE' }); navigate('/my-posts'); }
               catch (error) { setActionError(error.message); } finally { setBusy(false); }
-            }}>Delete post</button>}
+            }}><Icon name="trash" className="mr-2 !h-4 !w-4"/>Delete post</button>}
         </div>
       </div>
       {actionError && <p role="alert" className="mb-5 text-red-300">{actionError}</p>}
@@ -121,7 +122,7 @@ function PostDetailPage() {
             </p>
 
             <h2 className="mt-3 font-headline-lg text-2xl">
-              About this creation
+              <Icon name="info" className="mr-3 text-primary"/>About this creation
             </h2>
 
             <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-on-surface-variant">
@@ -129,6 +130,7 @@ function PostDetailPage() {
                 "The creator has not added a description yet."}
             </p>
           </section>
+          {creation.revisionNotes&&<section className="vault-panel p-6 sm:p-8"><h2 className="flex items-center gap-2 text-xl"><Icon name="edit" className="text-primary"/>Notes & updates</h2><p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-on-surface-variant">{creation.revisionNotes}</p></section>}
         </div>
 
         <aside
@@ -137,7 +139,7 @@ function PostDetailPage() {
         >
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
             <p className="text-xs uppercase tracking-[0.2em] text-primary">
-              Creation archive
+              <Icon name="cube" className="mr-2 !h-4 !w-4"/>Creation archive
             </p>
 
             <h1 className="mt-4 break-words font-headline-lg text-3xl leading-tight tracking-tight">
@@ -149,7 +151,7 @@ function PostDetailPage() {
                 aria-hidden="true"
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15 font-semibold text-primary"
               >
-                {creation.creator.slice(0, 1).toUpperCase()}
+                {creation.creatorAvatar ? <img src={creation.creatorAvatar} alt="" className="h-full w-full rounded-full object-cover"/> : creation.creator.slice(0, 1).toUpperCase()}
               </span>
 
               <div className="min-w-0">
@@ -171,7 +173,7 @@ function PostDetailPage() {
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <h2 className="font-headline-lg text-xl">Post information</h2>
+            <div className="flex items-center justify-between"><h2 className="flex items-center gap-2 font-headline-lg text-xl"><Icon name="archive" className="text-primary"/>Personal archive</h2><span className="rounded-full bg-primary/10 px-3 py-1 text-xs text-primary">Owner only</span></div>
 
             <dl className="mt-5 space-y-4">
               {specifications.map(([label, value]) => (
@@ -183,19 +185,20 @@ function PostDetailPage() {
             </dl>
 
             <div className="mt-6 border-t border-white/10 pt-6">
-              <h3 className="font-medium">Private files</h3>
+              <h3 className="flex items-center gap-2 font-medium"><Icon name="lock" className="!h-4 !w-4 text-primary"/>Private files</h3>
+              {isOwner && creation.attachments?.length>0 && <div className="my-5"><button type="button" disabled={busy} onClick={async()=>{setBusy(true);setActionError('');try{await downloadArchive(creation);}catch(error){setActionError(error.message);notify(error.message,'error');}finally{setBusy(false);}}} className="vault-action flex w-full items-center justify-center gap-3 rounded-xl bg-primary px-5 py-4 font-medium text-on-primary"><Icon name="download"/>{busy?'Preparing download…':'Download all as ZIP'}</button><p className="mt-2 text-center text-xs text-on-surface-variant">{creation.attachments.length} files · {formatBytes(creation.attachments.reduce((sum,file)=>sum+file.sizeBytes,0))} · Original files</p></div>}
               {!isOwner ? <p className="mt-3 text-sm text-on-surface-variant">Only the owner can access attachments and external download links.</p> : <>
                 <ul className="mt-4 space-y-3">
-                  {(creation.attachments ?? []).map((file) => <li key={file.id} className="break-words rounded-xl border border-white/10 p-4">
-                    <p>{file.originalName}</p><p className="mt-1 text-xs text-on-surface-variant">{formatBytes(file.sizeBytes)}</p>
+                  {(creation.attachments ?? []).map((file) => <li key={file.id} className="break-words rounded-xl border border-white/5 bg-black/25 p-4">
+                    <div className="flex items-center gap-3"><FileIcon name={file.originalName}/><div className="min-w-0"><p className="break-words text-sm font-medium">{file.originalName}</p><p className="mt-1 text-xs text-on-surface-variant">{formatBytes(file.sizeBytes)} · {file.originalName.split('.').pop().toUpperCase()}</p></div></div>
                     <button type="button" disabled={busy} className="mt-3 text-sm text-primary" onClick={async () => {
                       setBusy(true); setActionError('');
                       try { await downloadFile(file); } catch (error) { setActionError(error.message); } finally { setBusy(false); }
-                    }}>{busy ? 'Please wait…' : 'Download'}</button>
+                    }}><Icon name="download" className="mr-2 !h-4 !w-4"/>{busy ? 'Please wait…' : 'Download file'}</button>
                   </li>)}
                 </ul>
                 {(creation.attachments ?? []).length === 0 && <p className="mt-3 text-sm text-on-surface-variant">No uploaded files.</p>}
-                <h3 className="mt-6 font-medium">External downloads</h3>
+                <h3 className="mt-6 font-medium"><Icon name="link" className="mr-2 !h-4 !w-4 text-primary"/>External downloads</h3>
                 <ul className="mt-3 space-y-3">
                   {(creation.externalDownloads ?? []).map((link) => <li key={link.id} className="break-words">
                     {safeCreditUrl(link.url) && <a href={safeCreditUrl(link.url)} target="_blank" rel="noreferrer" className="text-primary hover:underline">{link.name} ↗</a>}

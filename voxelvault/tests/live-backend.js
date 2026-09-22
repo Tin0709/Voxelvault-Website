@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import { createClient } from '@supabase/supabase-js';
 import { S3Client, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import {readStoredZip} from './zip-reader.js';
 
 if (!process.argv.includes('--run')) throw new Error('Pass --run to create temporary cloud test data.');
 const env = { ...parseEnv(readFileSync('.env.server.local', 'utf8')), ...parseEnv(readFileSync('.env.local', 'utf8')) };
@@ -68,6 +69,13 @@ try {
     const download = await request(`/files/${uploaded[i].id}`, owner.token);
     assert.equal(hash(Buffer.from(await download.arrayBuffer())), hash(fixtures[i].bytes));
   }
+  await request(`/posts/${id}/archive`,null,{},401);
+  await request(`/posts/${id}/archive`,other.token,{},404);
+  const zipResponse=await request(`/posts/${id}/archive`,owner.token);
+  assert.ok(zipResponse.headers.get('content-disposition').includes('.zip'));
+  const zipFiles=readStoredZip(Buffer.from(await zipResponse.arrayBuffer()));
+  for(const fixture of fixtures.slice(1))assert.equal(hash(zipFiles.get(fixture.name)),hash(fixture.bytes));
+  console.log('PASS owner-only ZIP contains byte-identical Supabase and R2 attachments');
   for (const table of ['upload_sessions', 'attachments', 'external_downloads']) {
     const rows = checked(await other.client.from(table).select('*').in(table === 'upload_sessions' ? 'id' : 'post_id', table === 'upload_sessions' ? uploaded.map(f => f.id) : [id]));
     assert.equal(rows.length, 0);
@@ -95,7 +103,7 @@ try {
   if (process.argv.includes('--profiles')) {
     const profile = await (await request('/me/profile',owner.token)).json();
     const photo = await (await request('/uploads?kind=image&name=avatar.png',owner.token,{method:'POST',body:fixtures[0].bytes},201)).json();
-    const payload = {name:'Updated profile',bio:'Profile integration test',country:'VN',avatarId:photo.id,version:profile.version};
+    const payload = {name:'Updated profile',bio:'Profile integration test',country:'VN',avatarId:photo.id,coverId:photo.id,version:profile.version};
     await request('/me/profile',null,{method:'POST',body:JSON.stringify(payload)},401);
     await request('/me/profile',other.token,{method:'POST',body:JSON.stringify(payload)},409);
     await request('/me/profile',owner.token,{method:'POST',body:JSON.stringify(payload)});
@@ -104,15 +112,16 @@ try {
     assert.equal((await fetch(updated.avatarUrl)).status,200);
     const publicProfile = await (await request(`/profiles/${users[0]}`,null)).json();
     assert.equal(publicProfile.email,undefined); assert.equal(publicProfile.avatarUrl,updated.avatarUrl);
+    assert.equal(publicProfile.coverUrl,updated.avatarUrl);
     await request('/me/profile',owner.token,{method:'POST',body:JSON.stringify(payload)},409);
-    await request('/me/profile',owner.token,{method:'POST',body:JSON.stringify({...payload,version:updated.version,avatarId:null})});
+    await request('/me/profile',owner.token,{method:'POST',body:JSON.stringify({...payload,version:updated.version,avatarId:null,coverId:null})});
     assert.equal((await (await request('/me/storage',owner.token)).json()).usedBytes,0);
     console.log('PASS profile persistence, avatar ownership, public photo/private email and avatar removal quota');
   }
 } finally {
   // Only IDs returned by createUser in this execution are eligible for cleanup.
   for (const ownerId of users) {
-    if (process.argv.includes('--profiles')) checked(await db.from('profiles').update({avatar_upload_id:null}).eq('id',ownerId));
+    if (process.argv.includes('--profiles')) checked(await db.from('profiles').update({avatar_upload_id:null,cover_upload_id:null}).eq('id',ownerId));
     const files = checked(await db.from('upload_sessions').select('*').eq('owner_id', ownerId));
     for (const file of files) {
       if (file.provider === 'r2') await r2.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET, Key: file.object_key }));

@@ -97,6 +97,13 @@ test('API never exposes private files or external links to another user',async()
     assert.equal((await fetch(`${base}/api/posts?mine=true`,{headers:{Authorization:'Bearer invalid'}})).status,401);
     assert.equal((await fetch(`${base}/api/uploads?kind=attachment&name=x`,{method:'POST',body:'x'})).status,401);
     assert.equal((await fetch(`${base}/api/me/categories`)).status,401);
+    assert.equal((await fetch(`${base}/api/posts/${post}/archive`)).status,401);
+    assert.equal((await fetch(`${base}/api/posts/${post}/archive`,{headers:{Authorization:'Bearer other'}})).status,404);
+    const zip=await fetch(`${base}/api/posts/${post}/archive`,{headers:{Authorization:'Bearer owner'}});
+    assert.equal(zip.status,200);
+    assert.equal(zip.headers.get('content-type'),'application/zip');
+    assert.equal(zip.headers.get('cache-control'),'private, no-store');
+    assert.ok((await zip.arrayBuffer()).byteLength>3);
     assert.deepEqual(await (await fetch(`${base}/api/me/categories`,{headers:{Authorization:'Bearer owner'}})).json(),{categories:['art']});
     assert.deepEqual(await (await fetch(`${base}/api/me/categories`,{headers:{Authorization:'Bearer other'}})).json(),{categories:[]});
   });

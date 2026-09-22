@@ -28,6 +28,11 @@ body {
 @keyframes vault-spin { to { transform: rotate(360deg); } }
 @keyframes vault-out { to { opacity: 0; transform: translateY(16px) scale(.98); } }
 .vault-route { animation: vault-enter .25s ease-out; }
+.vault-page-enter, .vault-route > main:not(:has(.vault-loading)) { animation: vault-enter .5s cubic-bezier(.2,.7,.2,1) both; }
+.vault-panel { border:1px solid #ffffff0d; border-radius:18px; background:#ffffff04; }
+.vault-eyebrow { display:flex; align-items:center; gap:8px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#68dba9; }
+.vault-settings-link { display:flex; align-items:center; gap:12px; padding:12px; border-radius:10px; font-size:13px; }
+.vault-settings-link:hover { background:#68dba910; color:#68dba9; }
 .vault-card-enter { animation: vault-enter .48s cubic-bezier(.2,.7,.2,1) both; }
 .vault-preview, .vault-menu-enter { animation: vault-enter .35s ease-out both; }
 .vault-spinner { width: 28px; height: 28px; border: 2px solid #68dba933; border-top-color: #68dba9; border-right-color: #68dba9; border-radius: 50%; animation: vault-spin .85s linear infinite; }

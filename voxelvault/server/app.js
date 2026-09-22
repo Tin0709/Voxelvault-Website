@@ -5,6 +5,7 @@ import { pipeline } from 'node:stream/promises';
 import { PutObjectCommand, HeadObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { fileTypeFromBuffer } from 'file-type';
 import { MAX_BYTES, requireUuid, storageFor, validatePost } from './validation.js';
+import { streamArchive, safeFilename } from './archive.js';
 
 export function createApi({ db = null, r2 = null, env = {} } = {}) {
 const configured = Boolean(db);
@@ -40,11 +41,11 @@ function publicImage(file) {
   return db.storage.from('showcase').getPublicUrl(file.object_key).data.publicUrl;
 }
 async function hydrate(post, owner = false) {
-  const profile = checked(await db.from('profiles').select('id,name').eq('id', post.owner_id).single());
+  const profile = await profileFor(post.owner_id);
   const images = checked(await db.from('post_images').select('position,alt,upload_sessions(*)').eq('post_id', post.id).order('position'));
   const gallery = images.map((item) => ({ id: item.upload_sessions.id, src: publicImage(item.upload_sessions), alt: item.alt }));
   const result = {
-    id: post.id, ownerId: post.owner_id, creatorId: post.owner_id, creator: profile.name,
+    id: post.id, ownerId: post.owner_id, creatorId: post.owner_id, creator: profile.name, creatorAvatar: profile.avatarUrl,
     title: post.title, description: post.description, category: post.category, location: post.location,
     minecraftVersion: post.minecraft_version, revisionNotes: post.revision_notes,
     originalCreator: post.original_creator, originalSource: post.original_source, creditUrl: post.credit_url,
@@ -59,15 +60,20 @@ async function hydrate(post, owner = false) {
 }
 
 async function profileFor(id) {
-  const profile = checked(await db.from('profiles').select('id,name,bio,country,avatar_upload_id,version').eq('id',id).maybeSingle());
+  const profile = checked(await db.from('profiles').select('id,name,bio,country,avatar_upload_id,cover_upload_id,version').eq('id',id).maybeSingle());
   if (!profile) throw fail(404,'Profile not found');
   let avatarUrl = '';
+  let coverUrl = '';
+  if (profile.cover_upload_id) {
+    const file = checked(await db.from('upload_sessions').select('object_key').eq('id',profile.cover_upload_id).single());
+    coverUrl = publicImage(file);
+  }
   if (profile.avatar_upload_id) {
     const file = checked(await db.from('upload_sessions').select('object_key').eq('id',profile.avatar_upload_id).single());
     avatarUrl = publicImage(file);
   }
   return { id:profile.id, name:profile.name, bio:profile.bio, country:profile.country, version:profile.version,
-    avatarId:profile.avatar_upload_id, avatarUrl, handle:profile.id.slice(0,8), initials:profile.name.slice(0,2).toUpperCase() };
+    avatarId:profile.avatar_upload_id, avatarUrl, coverId:profile.cover_upload_id, coverUrl, handle:profile.id.slice(0,8), initials:profile.name.slice(0,2).toUpperCase() };
 }
 
 async function removeObject(file) {
@@ -86,6 +92,7 @@ async function cleanup(ownerId) {
 
 // A small per-process concurrency limit keeps bounded upload buffering from exhausting memory.
 let activeUploads = 0;
+let activeArchives = 0;
 async function upload(req, res, user, url) {
   if (activeUploads >= 4) throw fail(429, 'Server busy. Please retry this file.');
   const size = Number(req.headers['content-length']);
@@ -127,7 +134,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const origin = req.headers.origin;
     if (origin && origin !== allowedOrigin) throw fail(403, 'Origin not allowed');
-    if (origin) { res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary','Origin'); }
+    if (origin) { res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Access-Control-Expose-Headers','Content-Disposition'); res.setHeader('Vary','Origin'); }
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Headers','Authorization,Content-Type');
       res.setHeader('Access-Control-Allow-Methods','GET,POST,DELETE,OPTIONS');
@@ -156,7 +163,8 @@ const server = http.createServer(async (req, res) => {
         const body = await jsonBody(req);
         if (!body || typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length>50 || typeof body.bio !== 'string' || body.bio.length>1000 || typeof body.country !== 'string' || !/^([A-Z]{2})?$/.test(body.country) || !Number.isInteger(body.version) || body.version<0) throw fail(400,'Invalid profile');
         const avatar = body.avatarId === null ? null : requireUuid(body.avatarId);
-        checked(await db.rpc('save_profile',{p_owner:user.id,p_name:body.name.trim(),p_bio:body.bio,p_country:body.country,p_avatar:avatar,p_version:body.version}));
+        const cover = body.coverId == null ? (await profileFor(user.id)).coverId : requireUuid(body.coverId);
+        checked(await db.rpc('save_profile',{p_owner:user.id,p_name:body.name.trim(),p_bio:body.bio,p_country:body.country,p_avatar:avatar,p_cover:body.coverId === null ? null : cover ?? null,p_version:body.version}));
         await cleanup(user.id);
       }
       json(res,200,{...await profileFor(user.id),email:user.email}); return;
@@ -176,6 +184,24 @@ const server = http.createServer(async (req, res) => {
       json(res,200,{categories:[...categories].sort()}); return;
     }
     if (path === '/api/uploads' && req.method === 'POST') { await upload(req,res,await userFor(req,true),url); return; }
+    if (/^\/api\/posts\/[^/]+\/archive$/.test(path) && req.method === 'GET') {
+      const user=await userFor(req,true);
+      const post=checked(await db.from('posts').select('id,title').eq('id',requireUuid(path.split('/')[3])).eq('owner_id',user.id).maybeSingle());
+      if(!post) throw fail(404,'Post not found');
+      const files=checked(await db.from('upload_sessions').select('*').eq('post_id',post.id).eq('owner_id',user.id).eq('kind','attachment').eq('status','ready').order('id'));
+      if(!files.length) throw fail(404,'No uploaded files to download');
+      if(files.some(f=>f.provider==='r2')&&!r2) throw fail(503,'R2 not configured');
+      if(activeArchives>=2) throw fail(429,'Archive service busy. Please try again.');
+      activeArchives++;
+      try {
+        res.writeHead(200,{'Content-Type':'application/zip','Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(safeFilename(post.title,'voxelvault-post')+'.zip')}`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});
+        await streamArchive(res,files,async file=>{
+          if(file.provider==='r2') return (await r2.send(new GetObjectCommand({Bucket:env.R2_BUCKET,Key:file.object_key}))).Body;
+          return Readable.fromWeb(checked(await db.storage.from(file.bucket).download(file.object_key)).stream());
+        });
+      } finally {activeArchives--;}
+      return;
+    }
     if (/^\/api\/files\/[^/]+$/.test(path) && req.method === 'GET') {
       const user = await userFor(req,true);
       const file = checked(await db.from('upload_sessions').select('*').eq('id',requireUuid(path.split('/').pop())).eq('owner_id',user.id).eq('status','ready').maybeSingle());

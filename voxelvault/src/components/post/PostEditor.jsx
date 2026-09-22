@@ -1,3 +1,5 @@
+import CategoryPicker from './CategoryPicker';
+import Icon from '../ui/Icon';
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { api, uploadFile } from "../../lib/api";
@@ -19,7 +21,7 @@ const categories = [
   "uncategorized",
 ];
 
-const panelClass = "rounded-2xl border border-white/10 bg-white/[0.03] p-6";
+const panelClass = "vault-panel p-6 sm:p-8";
 
 const inputClass =
   "mt-2 w-full rounded-xl border border-white/10 bg-background px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
@@ -318,7 +320,7 @@ function PostEditor({ creation, mode = "edit" }) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] flex-1 px-6 py-8 lg:px-10">
+    <main className="vault-page-enter mx-auto w-full max-w-[1500px] flex-1 px-6 py-8 lg:px-10">
       <form onSubmit={handlePreview}>
         <fieldset disabled={saving} className="min-w-0">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
@@ -331,7 +333,7 @@ function PostEditor({ creation, mode = "edit" }) {
             </Link>
 
             <p className="mt-6 text-xs uppercase tracking-[0.2em] text-primary">
-              VoxelVault Studio
+              <Icon name="cube" className="mr-2 !h-4 !w-4"/>VoxelVault Studio
             </p>
 
             <h1 className="mt-3 font-headline-lg text-3xl">
@@ -367,7 +369,7 @@ function PostEditor({ creation, mode = "edit" }) {
             )}
 
             <section className={`${panelClass} space-y-5`}>
-              <h2 className="font-headline-lg text-xl">Post details</h2>
+              <h2 className="font-headline-lg text-xl"><Icon name="edit" className="mr-2 text-primary"/>Post details</h2>
 
               <label className="block text-sm">
                 Title
@@ -393,17 +395,12 @@ function PostEditor({ creation, mode = "edit" }) {
                 />
               </label>
 
-              <label className="block text-sm">
-                Category
-                <input name="category" value={draft.category} onChange={updateField} list="post-categories" required maxLength={80} className={inputClass} placeholder="Choose or type your own category" />
-                <datalist id="post-categories">{[...new Set([...categories,...(personalCategories?.categories ?? [])])].map(category=><option key={category} value={category} />)}</datalist>
-                <span className="mt-2 block text-xs text-on-surface-variant">Choose a suggestion or type your own. Saved categories are available on your next post.</span>
-              </label>
+              <CategoryPicker value={draft.category} options={[...categories,...(personalCategories?.categories ?? [])]} onChange={value=>{setDraft(current=>({...current,category:value}));clearPreview();}}/>
             </section>
 
             <details className={panelClass}>
               <summary className="cursor-pointer font-headline-lg text-xl">
-                Changelog & revision notes
+                <Icon name="file" className="mr-2 text-primary"/>Changelog & revision notes
               </summary>
 
               <label className="mt-4 block text-sm">
@@ -429,7 +426,7 @@ function PostEditor({ creation, mode = "edit" }) {
             <ExternalDownloadsEditor links={draft.externalDownloads} onChange={updateExternalDownloads} />
 
             <section className={`${panelClass} space-y-5`}>
-              <h2 className="font-headline-lg text-xl">Source & credit</h2>
+              <h2 className="font-headline-lg text-xl"><Icon name="link" className="mr-2 text-primary"/>Source & credit</h2>
               <p className="text-sm leading-relaxed text-on-surface-variant">
                 Optional public credit for the original work. The original creator may be
                 different from the account posting it. Credit does not grant access to attachments.
@@ -450,7 +447,7 @@ function PostEditor({ creation, mode = "edit" }) {
 
             <section className={`${panelClass} space-y-5`}>
               <h2 className="font-headline-lg text-xl">
-                Additional information
+                <Icon name="info" className="mr-2 text-primary"/>Additional information
               </h2>
 
               <label className="block text-sm">
@@ -482,12 +479,13 @@ function PostEditor({ creation, mode = "edit" }) {
             {error}
           </p>
         )}
-        <div className="mt-8 flex justify-end border-t border-white/10 pt-6">
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-primary/5 p-5">
+          <p className="text-sm text-on-surface-variant"><Icon name="eye" className="mr-2 text-primary"/>Review your showcase before publishing.</p>
           <button
             type="submit"
             className="vault-action rounded-full bg-primary px-6 py-3 text-sm font-medium text-on-primary transition hover:opacity-90"
           >
-            {isCreating ? "Preview post" : "Preview changes"}
+            <Icon name="eye" className="mr-2"/>{isCreating ? "Preview post" : "Preview changes"}
           </button>
         </div>
         </fieldset>
@@ -578,7 +576,7 @@ function PostEditor({ creation, mode = "edit" }) {
             {saveError && <p role="alert" className="mt-4 text-red-300">{saveError}</p>}
             <button type="button" disabled={saving} onClick={savePost} className="vault-action mt-5 inline-flex items-center gap-3 rounded-full bg-primary px-6 py-3 text-sm text-on-primary disabled:opacity-50">
               {saving && <span aria-hidden="true" className="vault-spinner !h-4 !w-4 !border-on-primary/30 !border-t-on-primary" />}
-              {saving ? 'Uploading and saving…' : saveError ? 'Retry save' : isCreating ? 'Publish post' : 'Save changes'}
+              {!saving&&<Icon name="upload"/>}{saving ? 'Uploading and saving…' : saveError ? 'Retry save' : isCreating ? 'Publish post' : 'Save changes'}
             </button>
           </div>
         </section>

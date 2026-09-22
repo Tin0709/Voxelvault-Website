@@ -97,5 +97,16 @@ test('migration, owner isolation, quota, publish, deletion and orphan cleanup', 
     await pg.exec('reset role');
     await profileSave(owner,1,null);
     assert.equal((await pg.query('select * from public.claim_cleanup($1)',[owner])).rows.some(row=>row.id===avatar),true);
+    await pg.exec(await readFile(new URL('../supabase/migrations/202609220003_profile_covers.sql',import.meta.url),'utf8'));
+    const cover=randomUUID();await reserve(cover,80,'image');
+    await pg.query("update public.upload_sessions set status='ready',created_at=now()-interval '25 hours' where id=$1",[cover]);
+    const saveCover=(asUser,version,photo,banner)=>pg.query('select public.save_profile($1,$2,$3,$4,$5,$6,$7)',[asUser,'Name','Bio','VN',photo,banner,version]);
+    await assert.rejects(saveCover(other,0,null,cover),/Invalid cover/);
+    await saveCover(owner,2,cover,cover);
+    await saveCover(owner,3,null,cover);
+    assert.equal((await pg.query('select * from public.claim_cleanup($1)',[owner])).rows.some(row=>row.id===cover),false);
+    await assert.rejects(pg.query('update public.upload_sessions set post_id=$1 where id=$2',[avatarPost,cover]),/Profile images cannot/);
+    await saveCover(owner,4,null,null);
+    assert.equal((await pg.query('select * from public.claim_cleanup($1)',[owner])).rows.some(row=>row.id===cover),true);
   } finally { await pg.close(); }
 });

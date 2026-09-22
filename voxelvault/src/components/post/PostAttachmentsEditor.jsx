@@ -1,3 +1,4 @@
+import Icon, { FileIcon } from '../ui/Icon';
 import { useState } from "react";
 import FileDropZone from "../ui/FileDropZone";
 import { describeFile, exceedsUploadLimit, formatBytes } from "../../utils/attachments";
@@ -20,7 +21,7 @@ function PostAttachmentsEditor({ attachments, onAdd, onRemove }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-headline-lg text-xl">Private attachments</h2>
+        <h2 className="font-headline-lg text-xl"><Icon name="archive" className="mr-2 text-primary"/>Private attachments</h2>
         <span className="rounded-full bg-primary/10 px-3 py-1 text-xs text-primary">Owner only</span>
       </div>
       <p className="mt-3 text-sm leading-relaxed text-on-surface-variant">
@@ -49,7 +50,7 @@ function PostAttachmentsEditor({ attachments, onAdd, onRemove }) {
         <ul className="mt-4 space-y-3">
           {attachments.map((attachment) => (
             <li key={attachment.id} className="min-w-0 rounded-xl border border-white/10 p-4">
-              <p className="break-words text-sm font-medium">{attachment.originalName}</p>
+              <div className="flex items-center gap-3"><FileIcon name={attachment.originalName}/><p className="min-w-0 break-words text-sm font-medium">{attachment.originalName}</p></div>
               <p className="mt-2 break-words text-xs text-on-surface-variant">
                 {attachment.typeLabel} · {formatBytes(attachment.sizeBytes)}
               </p>
@@ -60,7 +61,7 @@ function PostAttachmentsEditor({ attachments, onAdd, onRemove }) {
                 <span className="text-xs text-primary">{attachment.status === 'ready' ? 'Stored privately' : 'Selected locally · Upload on save'}</span>
                 <button type="button" onClick={() => onRemove(attachment.id)}
                   aria-label={`Remove ${attachment.originalName}`}
-                  className="rounded-lg px-3 py-2 text-sm text-red-300 hover:bg-red-400/10">Remove</button>
+                  className="rounded-lg px-3 py-2 text-sm text-red-300 hover:bg-red-400/10"><Icon name="trash" className="mr-1 !h-4 !w-4"/>Remove</button>
               </div>
             </li>
           ))}

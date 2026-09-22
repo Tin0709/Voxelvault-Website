@@ -1,4 +1,5 @@
 import { useId, useRef, useState } from "react";
+import Icon from './Icon';
 
 function FileDropZone({ label, prompt, hint, accept, onFiles, multiple = true, disabled = false }) {
   const inputId = useId();
@@ -67,6 +68,7 @@ function FileDropZone({ label, prompt, hint, accept, onFiles, multiple = true, d
         }`}
       >
         <p aria-live="polite" className="text-sm font-medium text-primary">
+          <Icon name="upload" className="mr-2"/>
           {dragging ? "Drop here to add" : prompt}
         </p>
         <label htmlFor={inputId} className="mt-3 block text-sm text-on-surface-variant">{label}</label>

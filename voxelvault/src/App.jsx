@@ -46,7 +46,8 @@ function App() {
         />
         <Route path="/create" element={<RequireAuth><CreatePostPage /></RequireAuth>} />
         <Route path="/my-posts" element={<RequireAuth><MyPostsPage /></RequireAuth>} />
-        <Route path="/profile" element={<RequireAuth><ProfileBasicsPage /></RequireAuth>} />
+        <Route path="/profile" element={<RequireAuth><CreatorProfilePage own /></RequireAuth>} />
+        <Route path="/profile/edit" element={<RequireAuth><ProfileBasicsPage /></RequireAuth>} />
         <Route path="/creations/:id/edit" element={<RequireAuth><EditPostPage /></RequireAuth>} />
 
         <Route path="/creations/:id" element={<PostDetailPage />} />

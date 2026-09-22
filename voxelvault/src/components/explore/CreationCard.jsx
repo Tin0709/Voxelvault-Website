@@ -43,7 +43,7 @@ function CreationCard({ creation, onOpen }) {
                 aria-hidden="true"
                 className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary"
               >
-                {creation.creator.slice(0, 1).toUpperCase()}
+                {creation.creatorAvatar ? <img src={creation.creatorAvatar} alt="" className="h-full w-full rounded-full object-cover"/> : creation.creator.slice(0, 1).toUpperCase()}
               </span>
 
               {creation.creator}

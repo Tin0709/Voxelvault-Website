@@ -51,3 +51,16 @@ export async function downloadFile(file) {
   notify(`${file.originalName} has been sent to your browser.`,'success','Download ready');
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
+
+export async function downloadArchive(post) {
+  notify('Preparing all uploaded attachments. External links stay on their original service.','info','Building your ZIP');
+  const response=await fetch(`${base}/api/posts/${encodeURIComponent(post.id)}/archive`,{headers:await headers()});
+  if(!response.ok) throw new Error((await response.json()).error || 'Archive download failed');
+  const blob=await response.blob();
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');link.href=url;
+  const encoded=response.headers.get('content-disposition')?.match(/filename\*=UTF-8''(.+)$/)?.[1];
+  link.download=encoded?decodeURIComponent(encoded):'voxelvault-post.zip';link.click();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  notify('Your ZIP has been sent to the browser.','success','Archive ready');
+}

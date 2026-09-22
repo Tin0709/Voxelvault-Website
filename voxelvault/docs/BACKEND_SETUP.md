@@ -184,6 +184,17 @@ Chúng kiểm tra SQL và RLS của ứng dụng; không thay thế kiểm thử
 
 ### Profile basics
 
+Cập nhật giao diện hồ sơ: `/profile` là hồ sơ cá nhân; `/profile/edit` chỉnh sửa
+avatar, cover, thông tin và email. Chạy thêm `202609220003_profile_covers.sql` sau
+hai migration trước. Cover tối đa 5 MB, lưu trong showcase, tính vào quota và được
+bảo vệ khỏi cleanup trong khi đang dùng. Gỡ/đổi cover sẽ dọn object cũ.
+
+API `GET /api/posts/:id/archive` xác minh chủ bài trước khi tạo ZIP. ZIP chỉ chứa
+file đính kèm đã upload (không tải URL bên ngoài), đặt tên theo bài đăng, giữ nguyên
+byte từng file và tự đổi tên nếu trùng. Server truyền ZIP theo luồng, tối đa 2 lượt
+đồng thời; trình duyệt hiện nhận ZIP vào Blob trước khi lưu nên cần đủ bộ nhớ cho
+tổng dung lượng file. Kịch bản `--profiles` kiểm tra cả ZIP từ Supabase/R2 và cover.
+
 Chạy migration bổ sung `supabase/migrations/202609220002_profiles.sql` trong SQL Editor
 (không chạy lại initial), rồi khởi động lại API. Trang `/profile` cho phép sửa tên,
 quốc gia, bio và ảnh đại diện công khai tối đa 5 MB. Ảnh tính vào quota; ảnh cũ được
