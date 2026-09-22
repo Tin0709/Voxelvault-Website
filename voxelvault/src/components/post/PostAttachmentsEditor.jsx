@@ -24,13 +24,13 @@ function PostAttachmentsEditor({ attachments, onAdd, onRemove }) {
         <span className="rounded-full bg-primary/10 px-3 py-1 text-xs text-primary">Owner only</span>
       </div>
       <p className="mt-3 text-sm leading-relaxed text-on-surface-variant">
-        Attach files up to 50 MB each. For larger files, add an external download link below. Once storage is connected,
-        only the account that owns this post will be able to download them.
+        Attach files up to 50 MB each. For larger files, add an external download link below.
+        Only the account that owns this post can download uploaded files.
       </p>
       <FileDropZone
         label="Choose files — optional"
         prompt="Drag and drop private files here"
-        hint="50 MB per file (50,000,000 bytes). Drop multiple files or choose files. Local selection only; nothing is uploaded or stored."
+        hint="50 MB per file (50,000,000 bytes). Files upload when you save the post. Up to 5 MB uses Supabase; larger attachments use R2."
         onFiles={selectFiles}
       />
       {rejectedNames.length > 0 && (
@@ -57,7 +57,7 @@ function PostAttachmentsEditor({ attachments, onAdd, onRemove }) {
                 {attachment.mimeType} · {attachment.sizeBytes.toLocaleString("en")} bytes
               </p>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <span className="text-xs text-primary">Selected locally · Not uploaded</span>
+                <span className="text-xs text-primary">{attachment.status === 'ready' ? 'Stored privately' : 'Selected locally · Upload on save'}</span>
                 <button type="button" onClick={() => onRemove(attachment.id)}
                   aria-label={`Remove ${attachment.originalName}`}
                   className="rounded-lg px-3 py-2 text-sm text-red-300 hover:bg-red-400/10">Remove</button>

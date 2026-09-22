@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, Navigate } from "react-router";
+import { useAuth } from "../auth/AuthContext";
+import { supabase, authProviders } from "../lib/supabase";
 
 const inputClass =
   "mt-2 w-full rounded-xl border border-white/10 bg-background px-4 py-3 text-sm text-on-surface outline-none transition placeholder:text-on-surface-variant/60 focus:border-primary focus:ring-2 focus:ring-primary/15";
 
 function AuthPage({ mode = "login" }) {
+  const { user, loading, configured } = useAuth();
+  const [busy, setBusy] = useState(false);
   const isRegister = mode === "register";
 
   const [form, setForm] = useState({
@@ -15,7 +19,7 @@ function AuthPage({ mode = "login" }) {
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('error_description') || '');
   const [message, setMessage] = useState("");
 
   function updateField(event) {
@@ -30,7 +34,7 @@ function AuthPage({ mode = "login" }) {
     setMessage("");
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     setError("");
     setMessage("");
@@ -55,18 +59,27 @@ function AuthPage({ mode = "login" }) {
       return;
     }
 
-    setMessage(
-      isRegister
-        ? "Form checked. Account creation will be available when the service is connected."
-        : "Form checked. Sign-in will be available when the service is connected.",
-    );
-
-    setForm((current) => ({
-      ...current,
-      password: "",
-      confirmPassword: "",
-    }));
+    if (!supabase) { setError('Supabase is not configured yet.'); return; }
+    setBusy(true);
+    try {
+      const result = isRegister
+        ? await supabase.auth.signUp({ email: form.email.trim(), password: form.password, options: { data: { name: form.name.trim() }, emailRedirectTo: `${window.location.origin}/login` } })
+        : await supabase.auth.signInWithPassword({ email: form.email.trim(), password: form.password });
+      if (result.error) throw result.error;
+      if (isRegister && !result.data.session) setMessage('Check your email to confirm your account, then sign in.');
+      setForm((current) => ({ ...current, password: '', confirmPassword: '' }));
+    } catch (error) { setError(error.message); } finally { setBusy(false); }
   }
+
+  async function socialSignIn(provider) {
+    setBusy(true); setError('');
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: `${window.location.origin}/login`, ...(provider === 'azure' ? { scopes: 'email' } : {}) } });
+      if (error) throw error;
+    } catch (error) { setError(error.message); setBusy(false); }
+  }
+
+  if (!loading && user) return <Navigate to="/my-posts" replace />;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 items-center px-6 py-12 lg:px-10 lg:py-20">
@@ -108,8 +121,15 @@ function AuthPage({ mode = "login" }) {
           </h2>
 
           <p className="mt-3 text-sm text-on-surface-variant">
-            Demo form — accounts are not connected yet.
+            {configured ? 'Sign in to manage your posts and private files.' : 'Supabase is not configured yet. Follow the backend setup guide.'}
           </p>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {authProviders.map((provider) => <button key={provider} type="button" disabled={!configured || busy || loading}
+              onClick={() => socialSignIn(provider)} className="rounded-full border border-white/15 px-4 py-3 text-sm hover:bg-white/5 disabled:opacity-50">
+              Continue with {({ google:'Google',facebook:'Facebook',github:'GitHub',discord:'Discord',azure:'Microsoft' })[provider]}
+            </button>)}
+          </div>
 
           <form onSubmit={handleSubmit} className="mt-7 space-y-5">
             {isRegister && (
@@ -223,9 +243,10 @@ function AuthPage({ mode = "login" }) {
 
             <button
               type="submit"
+              disabled={!configured || busy || loading}
               className="w-full rounded-full bg-primary px-5 py-3 text-sm font-medium text-on-primary transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
             >
-              {isRegister ? "Try registration form" : "Try sign-in form"}
+              {busy ? 'Please wait…' : isRegister ? "Create account" : "Sign in"}
             </button>
           </form>
 

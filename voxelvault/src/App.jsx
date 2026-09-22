@@ -9,6 +9,7 @@ import CreatePostPage from "./pages/CreatePostPage";
 import MyPostsPage from "./pages/MyPostsPage";
 import AuthPage from "./pages/AuthPage";
 import CreatorProfilePage from "./pages/CreatorProfilePage";
+import RequireAuth from "./auth/RequireAuth";
 
 function App() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,9 +41,9 @@ function App() {
             />
           }
         />
-        <Route path="/create" element={<CreatePostPage />} />
-        <Route path="/my-posts" element={<MyPostsPage />} />
-        <Route path="/creations/:id/edit" element={<EditPostPage />} />
+        <Route path="/create" element={<RequireAuth><CreatePostPage /></RequireAuth>} />
+        <Route path="/my-posts" element={<RequireAuth><MyPostsPage /></RequireAuth>} />
+        <Route path="/creations/:id/edit" element={<RequireAuth><EditPostPage /></RequireAuth>} />
 
         <Route path="/creations/:id" element={<PostDetailPage />} />
 

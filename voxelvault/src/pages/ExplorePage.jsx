@@ -2,7 +2,7 @@ import { useNavigate } from "react-router";
 import ExploreHero from "../components/explore/ExploreHero";
 import FilterBar from "../components/explore/FilterBar";
 import MasonryGrid from "../components/explore/MasonryGrid";
-import { creations } from "../data/creations";
+import { useApi } from "../lib/useApi";
 
 function normalizeText(value) {
   return value
@@ -14,6 +14,8 @@ function normalizeText(value) {
 
 function ExplorePage({ searchQuery = "", activeCategory, onCategoryChange }) {
   const navigate = useNavigate();
+  const { data, loading, error } = useApi('/posts');
+  const creations = data?.posts ?? [];
 
   const searchTerms = normalizeText(searchQuery)
     .trim()
@@ -83,12 +85,14 @@ function ExplorePage({ searchQuery = "", activeCategory, onCategoryChange }) {
           )}
         </div>
 
-        <MasonryGrid
+        {loading || error ? <p role={error ? 'alert' : 'status'} className="py-10 text-on-surface-variant">{loading ? 'Loading creations…' : error}</p> : creations.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/15 p-12 text-center"><h2 className="text-xl">No posts yet</h2><p className="mt-3 text-on-surface-variant">Be the first to share a creation.</p></div>
+        ) : <MasonryGrid
           creations={filteredCreations}
           onCreationClick={(creation) =>
             navigate(`/creations/${encodeURIComponent(creation.id)}`)
           }
-        />
+        />}
       </section>
     </main>
   );

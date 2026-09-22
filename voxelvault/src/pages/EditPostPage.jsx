@@ -1,11 +1,16 @@
 import { Link, useParams } from "react-router";
 import PostEditor from "../components/post/PostEditor";
-import { creations } from "../data/creations";
+import { useApi } from "../lib/useApi";
+import { useAuth } from "../auth/AuthContext";
+import RequestState from "../components/ui/RequestState";
 
 function EditPostPage() {
   const { id } = useParams();
 
-  const creation = creations.find((item) => item.id === id);
+  const { user } = useAuth();
+  const { data: creation, loading, error } = useApi(`/posts/${encodeURIComponent(id)}`);
+  if (loading || error) return <RequestState loading={loading} error={error} />;
+  if (creation && creation.ownerId !== user.id) return <RequestState error="You can only edit your own posts." />;
 
   if (!creation) {
     return (

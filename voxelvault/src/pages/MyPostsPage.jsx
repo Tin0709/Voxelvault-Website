@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { creations } from "../data/creations";
+import { useApi } from "../lib/useApi";
+import RequestState from "../components/ui/RequestState";
+import { formatBytes } from "../utils/attachments";
 
 function normalizeText(value) {
   return value
@@ -12,6 +14,9 @@ function normalizeText(value) {
 
 function MyPostsPage() {
   const [query, setQuery] = useState("");
+  const { data, loading, error } = useApi('/posts?mine=true');
+  const storage = useApi('/me/storage');
+  const creations = data?.posts ?? [];
 
   const terms = normalizeText(query).trim().split(/\s+/).filter(Boolean);
 
@@ -21,6 +26,7 @@ function MyPostsPage() {
     return terms.every((term) => text.includes(term));
   });
 
+  if (loading || error) return <RequestState loading={loading} error={error} />;
   return (
     <main className="mx-auto w-full max-w-[1600px] flex-1 px-6 py-10 lg:px-10">
       <div className="flex flex-wrap items-start justify-between gap-5">
@@ -47,8 +53,7 @@ function MyPostsPage() {
       </div>
 
       <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-on-surface-variant">
-        Demo collection — showing sample posts while accounts and saving are
-        being built.
+        {storage.error || (storage.data ? `Storage used or reserved: ${formatBytes(storage.data.usedBytes)} / ${formatBytes(storage.data.quotaBytes)}` : 'Loading storage usage…')}
       </p>
 
       <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -144,10 +149,10 @@ function MyPostsPage() {
         </div>
       ) : (
         <div className="mt-6 rounded-2xl border border-dashed border-white/15 px-6 py-16 text-center">
-          <h2 className="font-headline-lg text-xl">No posts found</h2>
+          <h2 className="font-headline-lg text-xl">{creations.length ? 'No posts found' : 'Create your first post'}</h2>
 
           <p className="mt-3 text-sm text-on-surface-variant">
-            Try another title or category.
+            {creations.length ? 'Try another title or category.' : 'Your account is empty. Add public images, source credit and your private files.'}
           </p>
 
           {query && (

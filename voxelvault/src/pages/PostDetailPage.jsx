@@ -1,16 +1,25 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import PostGallery from "../components/post/PostGallery";
-import { creations } from "../data/creations";
+import { useApi } from "../lib/useApi";
+import { api, downloadFile } from "../lib/api";
+import { useAuth } from "../auth/AuthContext";
+import RequestState from "../components/ui/RequestState";
+import { formatBytes, safeCreditUrl } from "../utils/attachments";
 import RelatedCreations from "../components/post/RelatedCreations";
 import PostCredits from "../components/post/PostCredits";
 
 function PostDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [actionError, setActionError] = useState('');
+  const [busy, setBusy] = useState(false);
   const [shareResult, setShareResult] = useState(null);
   const shareMessage = shareResult?.id === id ? shareResult.message : "";
 
-  const creation = creations.find((item) => item.id === id);
+  const { data: creation, loading, error } = useApi(`/posts/${encodeURIComponent(id)}`);
+  const isOwner = Boolean(user && creation?.ownerId === user.id);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -25,6 +34,7 @@ function PostDetailPage() {
     }
   }
 
+  if (loading || error) return <RequestState loading={loading} error={error} />;
   if (!creation) {
     return (
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-6 py-20 lg:px-10">
@@ -81,14 +91,22 @@ function PostDetailPage() {
           >
             Copy link ↗
           </button>
-          <Link
+          {isOwner && <Link
             to={`/creations/${encodeURIComponent(creation.id)}/edit`}
             className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-on-primary transition hover:opacity-90"
           >
             Edit post
-          </Link>
+          </Link>}
+          {isOwner && <button type="button" disabled={busy} className="rounded-full border border-red-300/30 px-4 py-2 text-sm text-red-300"
+            onClick={async () => {
+              if (!window.confirm('Delete this post and its uploaded files? This cannot be undone.')) return;
+              setBusy(true); setActionError('');
+              try { await api(`/posts/${creation.id}`, { method: 'DELETE' }); navigate('/my-posts'); }
+              catch (error) { setActionError(error.message); } finally { setBusy(false); }
+            }}>Delete post</button>}
         </div>
       </div>
+      {actionError && <p role="alert" className="mb-5 text-red-300">{actionError}</p>}
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
         <div className="min-w-0 space-y-6 lg:col-span-7 xl:col-span-8">
@@ -162,10 +180,26 @@ function PostDetailPage() {
             </dl>
 
             <div className="mt-6 border-t border-white/10 pt-6">
-              <p className="text-sm leading-relaxed text-on-surface-variant">
-                Attachments are private to the account that owns this post.
-                File storage and account access are not connected in this demo.
-              </p>
+              <h3 className="font-medium">Private files</h3>
+              {!isOwner ? <p className="mt-3 text-sm text-on-surface-variant">Only the owner can access attachments and external download links.</p> : <>
+                <ul className="mt-4 space-y-3">
+                  {(creation.attachments ?? []).map((file) => <li key={file.id} className="break-words rounded-xl border border-white/10 p-4">
+                    <p>{file.originalName}</p><p className="mt-1 text-xs text-on-surface-variant">{formatBytes(file.sizeBytes)}</p>
+                    <button type="button" disabled={busy} className="mt-3 text-sm text-primary" onClick={async () => {
+                      setBusy(true); setActionError('');
+                      try { await downloadFile(file); } catch (error) { setActionError(error.message); } finally { setBusy(false); }
+                    }}>{busy ? 'Please wait…' : 'Download'}</button>
+                  </li>)}
+                </ul>
+                {(creation.attachments ?? []).length === 0 && <p className="mt-3 text-sm text-on-surface-variant">No uploaded files.</p>}
+                <h3 className="mt-6 font-medium">External downloads</h3>
+                <ul className="mt-3 space-y-3">
+                  {(creation.externalDownloads ?? []).map((link) => <li key={link.id} className="break-words">
+                    {safeCreditUrl(link.url) && <a href={safeCreditUrl(link.url)} target="_blank" rel="noreferrer" className="text-primary hover:underline">{link.name} ↗</a>}
+                  </li>)}
+                </ul>
+                {(creation.externalDownloads ?? []).length === 0 && <p className="mt-3 text-sm text-on-surface-variant">No external links.</p>}
+              </>}
             </div>
           </section>
           <PostCredits {...creation} />

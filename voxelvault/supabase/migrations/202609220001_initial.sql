@@ -89,6 +89,8 @@ revoke all on public.profiles, public.storage_accounts, public.posts, public.upl
  public.post_images, public.attachments, public.external_downloads from anon, authenticated;
 grant select on public.profiles, public.posts, public.post_images to anon, authenticated;
 grant select on public.storage_accounts, public.upload_sessions, public.attachments, public.external_downloads to authenticated;
+grant all on public.profiles, public.storage_accounts, public.posts, public.upload_sessions,
+ public.post_images, public.attachments, public.external_downloads to service_role;
 create policy profiles_read on public.profiles for select using (true);
 create policy posts_read on public.posts for select using (true);
 create policy images_read on public.post_images for select using (true);
@@ -122,6 +124,7 @@ returns uuid language plpgsql security definer set search_path = '' as $$
 declare existing public.posts; item jsonb; f public.upload_sessions; image_ids uuid[] := '{}'; attachment_ids uuid[] := '{}'; n integer := 0;
 begin
   perform 1 from public.storage_accounts where owner_id = p_owner for update;
+  perform pg_advisory_xact_lock(hashtextextended(p_id::text,0));
   select * into existing from public.posts where id = p_id for update;
   if found and (existing.owner_id <> p_owner or existing.version <> p_version) then raise exception 'Post changed or access denied'; end if;
   if existing.id is null and p_version <> 0 then raise exception 'Post no longer exists'; end if;
@@ -177,6 +180,28 @@ grant execute on function public.reserve_upload(uuid,uuid,text,text,bigint,text)
  public.save_post(uuid,uuid,integer,jsonb,jsonb,jsonb,jsonb), public.delete_post(uuid,uuid) to service_role;
 
 -- No browser writes to storage.objects: only the API's service role uploads.
+create function public.claim_cleanup(p_owner uuid) returns setof public.upload_sessions
+language plpgsql security definer set search_path = '' as $$
+begin
+  -- Same lock as save_post prevents cleanup racing a publish operation.
+  perform 1 from public.storage_accounts where owner_id=p_owner for update;
+  update public.upload_sessions set status='deleting'
+    where owner_id=p_owner and post_id is null and created_at < now()-interval '24 hours';
+  return query select * from public.upload_sessions where owner_id=p_owner and status='deleting';
+end;
+$$;
+revoke all on function public.claim_cleanup(uuid) from public,anon,authenticated;
+grant execute on function public.claim_cleanup(uuid) to service_role;
+
+create function public.storage_usage(p_owner uuid) returns jsonb
+language sql security definer set search_path = '' as $$
+  select jsonb_build_object('quotaBytes',a.quota_bytes,'usedBytes',
+    (select coalesce(sum(size_bytes),0) from public.upload_sessions where owner_id=p_owner))
+  from public.storage_accounts a where owner_id=p_owner;
+$$;
+revoke all on function public.storage_usage(uuid) from public,anon,authenticated;
+grant execute on function public.storage_usage(uuid) to service_role;
+
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values
  ('showcase','showcase',true,50000000,array['image/jpeg','image/png','image/webp','image/avif','image/gif']),
  ('attachments','attachments',false,5000000,null);

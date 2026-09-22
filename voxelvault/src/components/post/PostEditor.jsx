@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { api, uploadFile } from "../../lib/api";
 import PostGallery from "./PostGallery";
 import PostMediaEditor from "./PostMediaEditor";
 import PostAttachmentsEditor from "./PostAttachmentsEditor";
@@ -22,6 +23,12 @@ const inputClass =
   "mt-2 w-full rounded-xl border border-white/10 bg-background px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
 
 function PostEditor({ creation, mode = "edit" }) {
+  const navigate = useNavigate();
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [uploadProgress, setUploadProgress] = useState({});
+  const savedUploads = useRef(new Map());
+  const postId = useRef(mode === 'create' ? crypto.randomUUID() : creation.id);
   const [draft, setDraft] = useState(() => ({
     ...creation,
     title: creation.title ?? "",
@@ -92,6 +99,38 @@ function PostEditor({ creation, mode = "edit" }) {
   function clearPreview() {
     setPreview(null);
     setError("");
+    setSaveError('');
+  }
+
+  async function savePost() {
+    if (!preview || saving) return;
+    setSaving(true); setSaveError('');
+    async function ensureUploaded(item, kind) {
+      if (!item.file) return { id: item.id, alt: item.alt ?? '' };
+      const key = item.src || item.id;
+      if (savedUploads.current.has(key)) return savedUploads.current.get(key);
+      const update = (progress, status) => setUploadProgress((current) => ({ ...current, [key]: { name: item.file.name, progress, status } }));
+      update(0,'uploading');
+      try {
+        const result = await uploadFile(item.file, kind, (percent) => update(percent, percent === 100 ? 'verifying' : 'uploading'));
+        const record = { id: result.id, alt: item.alt ?? '' };
+        savedUploads.current.set(key, record);
+        update(100,'complete'); return record;
+      } catch (error) { update(0,'failed'); throw error; }
+    }
+    try {
+      const images = [];
+      const attachments = [];
+      for (const image of preview.gallery) images.push(await ensureUploaded(image,'image'));
+      for (const file of preview.attachments) attachments.push(await ensureUploaded(file,'attachment'));
+      await api(`/posts/${postId.current}`, { method: 'POST', body: JSON.stringify({
+        title: preview.title, description: preview.description, category: preview.category, location: preview.location,
+        minecraftVersion: preview.minecraftVersion, revisionNotes: preview.revisionNotes,
+        originalCreator: preview.originalCreator, originalSource: preview.originalSource, creditUrl: preview.creditUrl,
+        version: creation.version ?? 0, images, attachments, externalDownloads: preview.externalDownloads,
+      }) });
+      navigate(`/creations/${postId.current}`);
+    } catch (error) { setSaveError(error.message); } finally { setSaving(false); }
   }
 
   function updateField(event) {
@@ -268,6 +307,7 @@ function PostEditor({ creation, mode = "edit" }) {
   return (
     <main className="mx-auto w-full max-w-[1600px] flex-1 px-6 py-8 lg:px-10">
       <form onSubmit={handlePreview}>
+        <fieldset disabled={saving} className="min-w-0">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
             <Link
@@ -292,7 +332,7 @@ function PostEditor({ creation, mode = "edit" }) {
             </p>
 
             <p className="mt-2 text-xs text-on-surface-variant">
-              Preview only. Changes are lost when you leave or refresh.
+              Preview your changes, then publish to save. Unsaved changes are lost when you leave or refresh.
             </p>
           </div>
 
@@ -443,6 +483,7 @@ function PostEditor({ creation, mode = "edit" }) {
             {error}
           </p>
         )}
+        </fieldset>
       </form>
 
       {preview && (
@@ -500,13 +541,13 @@ function PostEditor({ creation, mode = "edit" }) {
             <h3 className="font-headline-lg text-xl">Private attachments · Owner preview</h3>
             <p className="mt-3 text-sm text-on-surface-variant">
               {preview.attachments.length} files selected · {formatBytes(preview.attachments.reduce((total, file) => total + file.sizeBytes, 0))}.
-              {" "}These files are local only and have not been uploaded. This list is not part of the public showcase.
+              {" "}New files upload when you save. This list is not part of the public showcase.
             </p>
             <ul className="mt-3 space-y-2 text-sm">
               {preview.attachments.map((file) => <li key={file.id} className="break-words">{file.originalName} · {formatBytes(file.sizeBytes)}</li>)}
             </ul>
             <h3 className="mt-6 font-headline-lg text-xl">External downloads · Owner preview</h3>
-            <p className="mt-2 text-sm text-on-surface-variant">Links only; files remain on the external service. These links have not been saved or verified.</p>
+            <p className="mt-2 text-sm text-on-surface-variant">Links only; files remain on the external service. Changes are saved when you publish.</p>
             {preview.externalDownloads.length === 0 && <p className="mt-3 text-sm text-on-surface-variant">No external links added.</p>}
             <ul className="mt-3 space-y-3 text-sm">
               {preview.externalDownloads.map((link) => (
@@ -516,6 +557,18 @@ function PostEditor({ creation, mode = "edit" }) {
                 </li>
               ))}
             </ul>
+          </div>
+          <div className="mt-6">
+            <ul className="space-y-3" aria-live="polite">
+              {Object.entries(uploadProgress).map(([key, item]) => <li key={key} className="break-words text-sm">
+                <p>{item.name} — {({uploading:'Uploading',verifying:'Verifying storage',complete:'Uploaded',failed:'Failed; retry or remove the file'})[item.status]}</p>
+                <progress max="100" value={item.progress} aria-label={`Upload ${item.name}`} className="mt-2 w-full accent-primary" />
+              </li>)}
+            </ul>
+            {saveError && <p role="alert" className="mt-4 text-red-300">{saveError}</p>}
+            <button type="button" disabled={saving} onClick={savePost} className="mt-5 rounded-full bg-primary px-6 py-3 text-sm text-on-primary disabled:opacity-50">
+              {saving ? 'Uploading and saving…' : saveError ? 'Retry save' : isCreating ? 'Publish post' : 'Save changes'}
+            </button>
           </div>
         </section>
       )}

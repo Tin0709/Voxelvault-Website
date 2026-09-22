@@ -1,19 +1,22 @@
 import { useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import MasonryGrid from "../components/explore/MasonryGrid";
-import { creators } from "../data/creators";
-import { creations } from "../data/creations";
+import { useApi } from "../lib/useApi";
+import RequestState from "../components/ui/RequestState";
 
 function CreatorProfilePage() {
   const { creatorId } = useParams();
   const navigate = useNavigate();
 
-  const creator = creators.find((item) => item.id === creatorId);
+  const { data: creator, loading, error } = useApi(`/profiles/${encodeURIComponent(creatorId)}`);
+  const posts = useApi(`/posts?creator=${encodeURIComponent(creatorId)}`);
+  const creations = posts.data?.posts ?? [];
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [creatorId]);
 
+  if (loading || error || posts.loading || posts.error) return <RequestState loading={loading || posts.loading} error={error || posts.error} />;
   if (!creator) {
     return (
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-6 py-20 lg:px-10">

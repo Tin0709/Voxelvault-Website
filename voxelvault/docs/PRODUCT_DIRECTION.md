@@ -23,8 +23,10 @@ worlds, models, design work, documents and other content.
 
 ## Current implementation
 
-React / Vite / Tailwind frontend with static development fixtures. There is no real
-authentication, upload, database, quota enforcement or persistence yet.
+React / Vite / Tailwind frontend now calls Supabase Auth and a Node API. The schema,
+RLS policies, upload/download paths and CRUD are implemented locally. Cloud connection
+and provider integration tests require the owner's Supabase/R2/OAuth credentials;
+follow BACKEND_SETUP.md. Static development fixtures are no longer imported by pages.
 
 Create/Edit separates public images, optional public credit and private file selection.
 Each selected attachment holds a local File, originalName, mimeType, extension,
@@ -33,7 +35,11 @@ File metadata is browser supplied and must be verified by the backend later.
 Sizes display with decimal units (1 KB = 1,000 bytes). ZIP means archive, not world.
 No file contents are read into memory for attachment metadata or exposed as public URLs.
 The preview includes an explicitly private owner summary, not a public download list.
-Leaving or refreshing the editor discards the draft and selected files.
+Publish/Save uploads selected files and saves the post transactionally. Public images
+use Supabase; attachments at most 5 MB use private Supabase, larger attachments up to
+50 MB use private R2 Standard. Quota defaults to 200 MB/account and counts reservations.
+Leaving or refreshing before saving discards the draft; abandoned objects are eligible
+for cleanup after 24 hours. A scheduled cleanup command must be installed on deployment.
 
 The fixture's legacy creatorId/creator fields currently represent the demo poster;
 they are not proof of authorship or an authenticated identity.
@@ -54,8 +60,8 @@ they are not proof of authorship or an authenticated identity.
 6. Test and deploy the complete account/create/reload/download/edit/delete flow,
    including direct API access attempts from a second account and quota reconciliation.
 
-Initial storage direction: Cloudflare R2 Standard. Storj is only an alternative to
-evaluate. Recheck actual provider terms before integration; no promise of perpetual
+Storage direction: Supabase for images and small attachments, Cloudflare R2 Standard
+for attachments over 5 MB. Recheck actual provider terms; no promise of perpetual
 free capacity or hundreds of GB. Provider allowance is shared across the website.
 
 ## Completion criteria

@@ -1,6 +1,10 @@
 import { Link, NavLink } from "react-router";
+import { useState } from "react";
+import { useAuth } from "../../auth/AuthContext";
 
 function Header({ searchQuery, onSearchChange }) {
+  const { user, signOut } = useAuth();
+  const [error, setError] = useState('');
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-background/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-5 px-6 py-4 lg:px-10">
@@ -109,12 +113,15 @@ function Header({ searchQuery, onSearchChange }) {
             />
           </div>
         </div>
-        <Link
+        {user ? <button type="button" onClick={async () => {
+          try { setError(''); await signOut(); } catch (error) { setError(error.message); }
+        }} className="shrink-0 rounded-full border border-white/15 px-4 py-2.5 text-sm">Sign out</button> : <Link
           to="/login"
           className="shrink-0 rounded-full border border-white/15 px-4 py-2.5 text-sm font-medium text-on-surface transition hover:border-primary/40 hover:text-primary"
         >
           Sign in
-        </Link>
+        </Link>}
+        {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
       </div>
     </header>
   );

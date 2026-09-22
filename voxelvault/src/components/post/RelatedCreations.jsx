@@ -1,9 +1,11 @@
 import { useNavigate } from "react-router";
 import CreationCard from "../explore/CreationCard";
-import { creations } from "../../data/creations";
+import { useApi } from "../../lib/useApi";
 
 function RelatedCreations({ creation }) {
   const navigate = useNavigate();
+  const { data } = useApi('/posts');
+  const creations = data?.posts ?? [];
 
   const relatedCreations = creations
     .filter(
