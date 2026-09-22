@@ -1,206 +1,23 @@
-import http from 'node:http';
-import { randomUUID } from 'node:crypto';
-import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
 import { createClient } from '@supabase/supabase-js';
-import { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { fileTypeFromBuffer } from 'file-type';
-import { MAX_BYTES, requireUuid, storageFor, validatePost } from './validation.js';
+import { S3Client } from '@aws-sdk/client-s3';
+import { createApi } from './app.js';
 
 const env = process.env;
 const configured = Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
-const db = configured ? createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } }) : null;
+const db = configured ? createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY,
+  { auth: { persistSession: false, autoRefreshToken: false } }) : null;
 const r2 = env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY && env.R2_BUCKET ? new S3Client({
   region: 'auto', endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
   credentials: { accessKeyId: env.R2_ACCESS_KEY_ID, secretAccessKey: env.R2_SECRET_ACCESS_KEY },
 }) : null;
-const fail = (status, message) => Object.assign(new Error(message), { status });
-const checked = ({ data, error }) => { if (error) throw error; return data; };
-const allowedOrigin = env.APP_ORIGIN || 'http://localhost:5173';
-
-async function userFor(req, required = false) {
-  const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
-  if (!token) { if (required) throw fail(401, 'Please sign in'); return null; }
-  const { data, error } = await db.auth.getUser(token);
-  if (error || !data.user) throw fail(401, 'Session expired. Please sign in again.');
-  return data.user;
-}
-async function readBody(req, max) {
-  const chunks = []; let size = 0;
-  for await (const chunk of req) {
-    size += chunk.length;
-    if (size > max) throw fail(413, 'Request is too large');
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks);
-}
-async function jsonBody(req) {
-  try { return JSON.parse((await readBody(req, 300000)).toString()); }
-  catch (error) { if (error.status) throw error; throw fail(400, 'Invalid JSON'); }
-}
-function json(res, status, body) {
-  res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
-  res.end(JSON.stringify(body));
-}
-function publicImage(file) {
-  return db.storage.from('showcase').getPublicUrl(file.object_key).data.publicUrl;
-}
-async function hydrate(post, owner = false) {
-  const profile = checked(await db.from('profiles').select('id,name').eq('id', post.owner_id).single());
-  const images = checked(await db.from('post_images').select('position,alt,upload_sessions(*)').eq('post_id', post.id).order('position'));
-  const gallery = images.map((item) => ({ id: item.upload_sessions.id, src: publicImage(item.upload_sessions), alt: item.alt }));
-  const result = {
-    id: post.id, ownerId: post.owner_id, creatorId: post.owner_id, creator: profile.name,
-    title: post.title, description: post.description, category: post.category, location: post.location,
-    minecraftVersion: post.minecraft_version, revisionNotes: post.revision_notes,
-    originalCreator: post.original_creator, originalSource: post.original_source, creditUrl: post.credit_url,
-    version: post.version, gallery, image: gallery[0]?.src ?? '', alt: gallery[0]?.alt ?? '',
-  };
-  if (owner) {
-    const files = checked(await db.from('attachments').select('upload_sessions(*)').eq('post_id', post.id));
-    result.attachments = files.map(({ upload_sessions: f }) => ({ id: f.id, originalName: f.original_name, sizeBytes: f.size_bytes, mimeType: f.mime_type, typeLabel: f.mime_type, status: 'ready', provider: f.provider }));
-    result.externalDownloads = checked(await db.from('external_downloads').select('id,name,url').eq('post_id', post.id));
-  }
-  return result;
-}
-
-async function removeObject(file) {
-  if (file.provider === 'r2') {
-    if (!r2) throw fail(503, 'R2 is not configured');
-    await r2.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET, Key: file.object_key }));
-  } else checked(await db.storage.from(file.bucket).remove([file.object_key]));
-  checked(await db.from('upload_sessions').delete().eq('id', file.id).eq('status', 'deleting'));
-}
-async function cleanup(ownerId) {
-  const files = checked(await db.rpc('claim_cleanup', { p_owner: ownerId }));
-  for (const file of files) {
-    try { await removeObject(file); } catch { console.error(`Cleanup pending for upload ${file.id}`); }
-  }
-}
-
-// A small per-process concurrency limit keeps bounded upload buffering from exhausting memory.
-let activeUploads = 0;
-async function upload(req, res, user, url) {
-  if (activeUploads >= 4) throw fail(429, 'Server busy. Please retry this file.');
-  const size = Number(req.headers['content-length']);
-  const kind = url.searchParams.get('kind');
-  const provider = storageFor(kind, size);
-  const name = (url.searchParams.get('name') ?? '').trim();
-  if (!name || name.length > 255) throw fail(400, 'Invalid filename');
-  if (provider === 'r2' && !r2) throw fail(503, 'R2 is not configured yet');
-  activeUploads++;
-  let record;
-  try {
-    record = checked(await db.rpc('reserve_upload', { p_owner: user.id, p_id: randomUUID(), p_name: name, p_mime: 'application/octet-stream', p_size: size, p_kind: kind }));
-    const bytes = await readBody(req, MAX_BYTES);
-    if (bytes.length !== size) throw fail(400, 'File size does not match');
-    const detected = await fileTypeFromBuffer(bytes).catch(() => null);
-    const mime = detected?.mime ?? 'application/octet-stream';
-    if (kind === 'image' && !['image/jpeg','image/png','image/webp','image/avif','image/gif'].includes(mime)) throw fail(400, 'Invalid or unsupported image');
-    if (provider === 'r2') {
-      await r2.send(new PutObjectCommand({ Bucket: env.R2_BUCKET, Key: record.object_key, Body: bytes, ContentLength: size, ContentType: mime }));
-      const head = await r2.send(new HeadObjectCommand({ Bucket: env.R2_BUCKET, Key: record.object_key }));
-      if (head.ContentLength !== size) throw fail(502, 'Stored size verification failed');
-    } else {
-      checked(await db.storage.from(record.bucket).upload(record.object_key, bytes, { contentType: mime, upsert: false }));
-      const info = checked(await db.storage.from(record.bucket).info(record.object_key));
-      if (Number(info.metadata?.size ?? info.size) !== size) throw fail(502, 'Stored size verification failed');
-    }
-    checked(await db.from('upload_sessions').update({ status: 'ready', mime_type: mime }).eq('id', record.id).eq('status', 'pending').select().single());
-    json(res, 201, { id: record.id, originalName: name, sizeBytes: size, mimeType: mime, typeLabel: mime, status: 'ready', provider, ...(kind === 'image' ? { src: publicImage(record), alt: name } : {}) });
-  } catch (error) {
-    if (record) {
-      await db.from('upload_sessions').update({ status: 'deleting' }).eq('id', record.id);
-      try { await removeObject(record); } catch { /* Durable row is retried by cleanup. */ }
-    }
-    throw error;
-  } finally { activeUploads--; }
-}
-
-const server = http.createServer(async (req, res) => {
-  try {
-    const origin = req.headers.origin;
-    if (origin && origin !== allowedOrigin) throw fail(403, 'Origin not allowed');
-    if (origin) { res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary','Origin'); }
-    if (req.method === 'OPTIONS') {
-      res.setHeader('Access-Control-Allow-Headers','Authorization,Content-Type');
-      res.setHeader('Access-Control-Allow-Methods','GET,POST,DELETE,OPTIONS');
-      res.writeHead(204); res.end(); return;
-    }
-    const url = new URL(req.url, 'http://localhost');
-    const path = url.pathname;
-    if (path === '/api/health') { json(res,200,{ configured, r2Configured: Boolean(r2) }); return; }
-    if (!db) throw fail(503, 'Backend not configured. Follow docs/BACKEND_SETUP.md.');
-    if (path === '/api/posts' && req.method === 'GET') {
-      const mine = url.searchParams.get('mine') === 'true';
-      const user = await userFor(req, mine);
-      let query = db.from('posts').select('*').order('created_at', { ascending: false });
-      if (mine) query = query.eq('owner_id', user.id);
-      if (url.searchParams.has('creator')) query = query.eq('owner_id', requireUuid(url.searchParams.get('creator')));
-      const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
-      const posts = checked(await query.range(offset, offset + 49));
-      json(res,200,{ posts: await Promise.all(posts.map((p) => hydrate(p, mine))), hasMore: posts.length === 50 }); return;
-    }
-    if (/^\/api\/profiles\/[^/]+$/.test(path) && req.method === 'GET') {
-      const profile = checked(await db.from('profiles').select('id,name,bio').eq('id', requireUuid(path.split('/').pop())).maybeSingle());
-      if (!profile) throw fail(404,'Profile not found');
-      json(res,200,{ ...profile, handle: profile.id.slice(0,8), initials: profile.name.slice(0,2).toUpperCase() }); return;
-    }
-    if (path === '/api/me/storage' && req.method === 'GET') {
-      const user = await userFor(req,true);
-      json(res,200,checked(await db.rpc('storage_usage',{p_owner:user.id}))); return;
-    }
-    if (path === '/api/uploads' && req.method === 'POST') { await upload(req,res,await userFor(req,true),url); return; }
-    if (/^\/api\/files\/[^/]+$/.test(path) && req.method === 'GET') {
-      const user = await userFor(req,true);
-      const file = checked(await db.from('upload_sessions').select('*').eq('id',requireUuid(path.split('/').pop())).eq('owner_id',user.id).eq('status','ready').maybeSingle());
-      if (!file || !file.post_id || file.kind !== 'attachment') throw fail(404,'File not found');
-      let stream;
-      if (file.provider === 'r2') {
-        if (!r2) throw fail(503,'R2 not configured');
-        const object = await r2.send(new GetObjectCommand({Bucket:env.R2_BUCKET,Key:file.object_key}));
-        stream = object.Body;
-      } else {
-        const blob = checked(await db.storage.from(file.bucket).download(file.object_key));
-        stream = Readable.fromWeb(blob.stream());
-      }
-      res.writeHead(200, { 'Content-Type':'application/octet-stream', 'Content-Length':file.size_bytes, 'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(file.original_name)}`, 'Cache-Control':'private, no-store', 'X-Content-Type-Options':'nosniff' });
-      await pipeline(stream,res); return;
-    }
-    if (/^\/api\/posts\/[^/]+$/.test(path)) {
-      const id = requireUuid(path.split('/').pop());
-      const user = await userFor(req, req.method !== 'GET');
-      if (req.method === 'GET') {
-        const post = checked(await db.from('posts').select('*').eq('id',id).maybeSingle());
-        if (!post) throw fail(404,'Post not found');
-        json(res,200,await hydrate(post,user?.id === post.owner_id)); return;
-      }
-      if (req.method === 'POST') {
-        const body = await jsonBody(req);
-        const post = validatePost(body);
-        checked(await db.rpc('save_post',{ p_owner:user.id,p_id:id,p_version:body.version,p_post:post,p_images:body.images,p_attachments:body.attachments,p_links:body.externalDownloads }));
-        json(res,200,{id}); void cleanup(user.id).catch(()=>console.error('Cleanup will retry on the next scheduled run')); return;
-      }
-      if (req.method === 'DELETE') {
-        checked(await db.rpc('delete_post',{p_owner:user.id,p_id:id}));
-        await cleanup(user.id); json(res,200,{deleted:true}); return;
-      }
-    }
-    throw fail(404,'Not found');
-  } catch (error) {
-    if (res.headersSent) { res.destroy(); return; }
-    const expected = error.status || error.code === 'P0001';
-    if (!expected) console.error('API operation failed:',error.code ?? error.name);
-    json(res, error.status ?? (error.code === 'P0001' ? 409 : 500), { error: expected ? error.message : 'Backend request failed. Check configuration and database migration.' });
-  }
-});
-server.requestTimeout = 300000;
+const { server, cleanup } = createApi({ db, r2, env });
 
 if (process.argv.includes('--cleanup')) {
   if (!db) throw new Error('Backend not configured');
   let offset = 0;
   while (true) {
-    const accounts = checked(await db.from('storage_accounts').select('owner_id').order('owner_id').range(offset,offset+499));
+    const { data: accounts, error } = await db.from('storage_accounts').select('owner_id').order('owner_id').range(offset,offset+499);
+    if (error) throw error;
     for (const account of accounts) await cleanup(account.owner_id);
     if (accounts.length < 500) break;
     offset += 500;
