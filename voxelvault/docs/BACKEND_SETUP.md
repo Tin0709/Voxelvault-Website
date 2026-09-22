@@ -179,3 +179,24 @@ record vẫn còn để lần sau thử lại và dung lượng chưa được t
 
 Các bài test cục bộ sử dụng PostgreSQL nhúng với schema auth/storage giả lập.
 Chúng kiểm tra SQL và RLS của ứng dụng; không thay thế kiểm thử Supabase Auth/Storage/R2 thật.
+
+## 9. Kiểm thử tích hợp với dịch vụ thật
+
+Khi Vite (5173) và API (8787) đang chạy với cấu hình hiện tại:
+
+```powershell
+node tests/live-backend.js --run
+```
+
+Lệnh này đọc hai file môi trường trên máy, tạo hai tài khoản kiểm thử được xác nhận
+qua Admin API (không gửi email), upload một ảnh PNG, một file nhỏ và một file
+5.000.001 byte. Nó tạo một bài công khai tạm, kiểm tra quyền truy cập qua API và
+RLS, so sánh SHA-256 khi tải file, sửa bài, từ chối phiên bản cũ, xóa bài và kiểm
+tra object đã được xóa cùng quota trở về 0. Khối `finally` dọn dữ liệu và tài khoản
+do chính lần chạy tạo ra. Không ngắt tiến trình giữa chừng vì có thể làm dở cleanup.
+Không chạy cùng bộ test cục bộ mặc định; chỉ chạy khi chủ động kiểm tra dịch vụ thật.
+
+Ngày 22/09/2026: toàn bộ kịch bản trên đã đạt với cấu hình phát triển hiện tại,
+bao gồm upload/download Supabase và R2, và dữ liệu kiểm thử đã được xóa.
+Kiểm thử này không điều khiển trình duyệt: vẫn cần kiểm tra kéo thả, tiến trình
+upload trên giao diện, mobile và hành vi retry khi mạng gián đoạn.
