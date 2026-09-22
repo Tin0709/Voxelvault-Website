@@ -7,7 +7,8 @@ const categories = [
   { id: "redstone", label: "Redstone" },
 ];
 
-function FilterBar({ activeCategory, onCategoryChange }) {
+function FilterBar({ activeCategory, onCategoryChange, customCategories = [] }) {
+  const options = [...categories, ...customCategories.filter(id=>!categories.some(c=>c.id===id)).map(id=>({id,label:id}))];
   return (
     <section
       aria-label="Filter creations"
@@ -18,7 +19,7 @@ function FilterBar({ activeCategory, onCategoryChange }) {
         aria-label="Build categories"
         className="flex flex-wrap gap-2 sm:gap-3"
       >
-        {categories.map((category) => {
+        {options.map((category) => {
           const isActive = activeCategory === category.id;
 
           return (

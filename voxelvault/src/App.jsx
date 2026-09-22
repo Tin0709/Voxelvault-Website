@@ -11,6 +11,7 @@ import AuthPage from "./pages/AuthPage";
 import CreatorProfilePage from "./pages/CreatorProfilePage";
 import RequireAuth from "./auth/RequireAuth";
 import ProfileBasicsPage from "./pages/ProfileBasicsPage";
+import Notifications from './components/ui/Notifications';
 
 function App() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,6 +31,7 @@ function App() {
   return (
     <div className="flex min-h-screen flex-col bg-background font-body-md text-on-surface">
       <Header searchQuery={searchQuery} onSearchChange={handleSearchChange} />
+      <div key={location.pathname} className="vault-route flex flex-1 flex-col min-w-0">
 
       <Routes>
         <Route
@@ -68,6 +70,8 @@ function App() {
         />
         <Route path="/creators/:creatorId" element={<CreatorProfilePage />} />
       </Routes>
+      </div>
+      <Notifications />
 
       <Footer />
     </div>

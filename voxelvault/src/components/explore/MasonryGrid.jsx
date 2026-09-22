@@ -15,8 +15,8 @@ function MasonryGrid({ creations, onCreationClick }) {
 
   return (
     <div className="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4">
-      {creations.map((creation) => (
-        <div key={creation.id} className="mb-8 break-inside-avoid">
+      {creations.map((creation, index) => (
+        <div key={creation.id} className="vault-card-enter mb-8 break-inside-avoid" style={{animationDelay:`${Math.min(index % 50, 8)*45}ms`}}>
           <CreationCard creation={creation} onOpen={onCreationClick} />
         </div>
       ))}

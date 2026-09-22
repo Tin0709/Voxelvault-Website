@@ -3,6 +3,7 @@ import ExploreHero from "../components/explore/ExploreHero";
 import FilterBar from "../components/explore/FilterBar";
 import MasonryGrid from "../components/explore/MasonryGrid";
 import { usePostList } from "../lib/usePostList";
+import LoadingState from '../components/ui/LoadingState';
 
 function normalizeText(value) {
   return value
@@ -50,6 +51,7 @@ function ExplorePage({ searchQuery = "", activeCategory, onCategoryChange }) {
       <ExploreHero />
 
       <FilterBar
+        customCategories={[...new Set(creations.map(post=>post.category))]}
         activeCategory={activeCategory}
         onCategoryChange={onCategoryChange}
       />
@@ -85,7 +87,7 @@ function ExplorePage({ searchQuery = "", activeCategory, onCategoryChange }) {
           )}
         </div>
 
-        {loading || error ? <p role={error ? 'alert' : 'status'} className="py-10 text-on-surface-variant">{loading ? 'Loading creations…' : error}</p> : creations.length === 0 ? (
+        {loading ? <LoadingState label="Gathering creations…" /> : error ? <p role="alert" className="py-10 text-on-surface-variant">{error}</p> : creations.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-white/15 p-12 text-center"><h2 className="text-xl">No posts yet</h2><p className="mt-3 text-on-surface-variant">Be the first to share a creation.</p></div>
         ) : <MasonryGrid
           creations={filteredCreations}
