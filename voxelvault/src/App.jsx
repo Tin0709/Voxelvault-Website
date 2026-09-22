@@ -12,6 +12,8 @@ import CreatorProfilePage from "./pages/CreatorProfilePage";
 import RequireAuth from "./auth/RequireAuth";
 import ProfileBasicsPage from "./pages/ProfileBasicsPage";
 import Notifications from './components/ui/Notifications';
+import ConfirmHost from './components/ui/ConfirmHost';
+import DraftPage from './pages/DraftPage';
 
 function App() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,6 +47,7 @@ function App() {
           }
         />
         <Route path="/create" element={<RequireAuth><CreatePostPage /></RequireAuth>} />
+        <Route path="/drafts/:id" element={<RequireAuth><DraftPage /></RequireAuth>} />
         <Route path="/my-posts" element={<RequireAuth><MyPostsPage /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><CreatorProfilePage own /></RequireAuth>} />
         <Route path="/profile/edit" element={<RequireAuth><ProfileBasicsPage /></RequireAuth>} />
@@ -73,6 +76,7 @@ function App() {
       </Routes>
       </div>
       <Notifications />
+      <ConfirmHost />
 
       <Footer />
     </div>

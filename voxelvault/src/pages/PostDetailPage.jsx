@@ -1,6 +1,7 @@
+import { confirmAction } from '../lib/confirm';
 import Icon, { FileIcon } from '../components/ui/Icon';
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import PostGallery from "../components/post/PostGallery";
 import { useApi } from "../lib/useApi";
 import { api, downloadFile, downloadArchive } from "../lib/api";
@@ -13,6 +14,7 @@ import { notify } from '../lib/notifications';
 
 function PostDetailPage() {
   const { id } = useParams();
+  const [searchParams]=useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [actionError, setActionError] = useState('');
@@ -103,7 +105,7 @@ function PostDetailPage() {
           </Link>}
           {isOwner && <button type="button" disabled={busy} className="rounded-full border border-red-300/30 px-4 py-2 text-sm text-red-300"
             onClick={async () => {
-              if (!window.confirm('Delete this post and its uploaded files? This cannot be undone.')) return;
+              if (!await confirmAction('Delete this post and its uploaded files? This cannot be undone.','Delete post')) return;
               setBusy(true); setActionError('');
               try { await api(`/posts/${creation.id}`, { method: 'DELETE' }); navigate('/my-posts'); }
               catch (error) { setActionError(error.message); } finally { setBusy(false); }
@@ -114,7 +116,7 @@ function PostDetailPage() {
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
         <div className="min-w-0 space-y-6 lg:col-span-7 xl:col-span-8">
-          <PostGallery key={creation.id} creation={creation} />
+          <PostGallery key={creation.id+(searchParams.get('image')||'')} creation={{...creation,selectedImageId:searchParams.get('image')}} />
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
             <p className="text-xs uppercase tracking-[0.2em] text-primary">

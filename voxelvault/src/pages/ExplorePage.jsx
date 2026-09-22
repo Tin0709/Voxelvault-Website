@@ -1,104 +1,25 @@
-import { useNavigate } from "react-router";
-import ExploreHero from "../components/explore/ExploreHero";
-import FilterBar from "../components/explore/FilterBar";
-import MasonryGrid from "../components/explore/MasonryGrid";
-import { usePostList } from "../lib/usePostList";
+import {useEffect,useRef,useState} from 'react';
+import {useNavigate} from 'react-router';
+import ExploreHero from '../components/explore/ExploreHero';
+import FilterBar from '../components/explore/FilterBar';
+import MasonryGrid from '../components/explore/MasonryGrid';
 import LoadingState from '../components/ui/LoadingState';
+import {useImageFeed} from '../lib/useImageFeed';
+import {useApi} from '../lib/useApi';
 
-function normalizeText(value) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[đĐ]/g, "d")
-    .toLowerCase();
+function ImageFeed({category,search}) {
+  const feed=useImageFeed(category,search);const end=useRef(null);const navigate=useNavigate();
+  useEffect(()=>{if(!feed.next||feed.error||feed.loadingMore)return;const observer=new IntersectionObserver(entries=>{if(entries[0].isIntersecting)feed.loadMore();},{rootMargin:'600px'});if(end.current)observer.observe(end.current);return()=>observer.disconnect();},[feed]);
+  if(feed.loading)return <LoadingState label="Discovering images from the vault…"/>;
+  return <section className="pt-6" aria-label="Explore images">
+    <p className="mb-6 text-sm text-on-surface-variant">{feed.items.length} images discovered</p>
+    <MasonryGrid creations={feed.items} onCreationClick={image=>navigate('/creations/'+image.postId+'?image='+image.imageId)}/>
+    <div ref={end} className="py-8 text-center">{feed.loadingMore?<LoadingState label="Finding more images…"/>:feed.error?<div role="alert"><p>{feed.error}</p><button type="button" onClick={()=>feed.next?feed.loadMore():window.location.reload()} className="mt-3 text-primary">Retry</button></div>:feed.next?<button onClick={feed.loadMore} className="rounded-full border border-primary/30 px-6 py-3 text-primary">Load more images</button>:feed.items.length>0?<p className="text-sm text-on-surface-variant">You have explored every matching image. Come back for new creations.</p>:null}</div>
+  </section>;
 }
-
-function ExplorePage({ searchQuery = "", activeCategory, onCategoryChange }) {
-  const navigate = useNavigate();
-  const { data, loading, error, loadingMore, loadMore } = usePostList();
-  const creations = data?.posts ?? [];
-
-  const searchTerms = normalizeText(searchQuery)
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  const filteredCreations = creations.filter((creation) => {
-    const matchesCategory =
-      activeCategory === "all" || creation.category === activeCategory;
-
-    const searchableText = normalizeText(
-      [
-        creation.title,
-        creation.creator,
-        creation.description,
-        creation.category,
-        creation.location,
-      ]
-        .filter(Boolean)
-        .join(" "),
-    );
-
-    const matchesSearch = searchTerms.every((term) =>
-      searchableText.includes(term),
-    );
-
-    return matchesCategory && matchesSearch;
-  });
-
-  return (
-    <main className="mx-auto w-full max-w-[1600px] flex-1 px-6 pb-16 lg:px-10">
-      <ExploreHero />
-
-      <FilterBar
-        customCategories={[...new Set(creations.map(post=>post.category))]}
-        activeCategory={activeCategory}
-        onCategoryChange={onCategoryChange}
-      />
-
-      <section aria-label="Creations" className="pt-6">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <p
-            role="status"
-            aria-atomic="true"
-            className="break-words text-sm text-on-surface-variant"
-          >
-            {filteredCreations.length}{" "}
-            {filteredCreations.length === 1 ? "creation" : "creations"}
-            {searchQuery.trim() && (
-              <>
-                {" "}
-                matching{" "}
-                <span className="font-medium text-on-surface">
-                  “{searchQuery.trim()}”
-                </span>
-              </>
-            )}
-          </p>
-
-          {activeCategory !== "all" && (
-            <button
-              type="button"
-              onClick={() => onCategoryChange("all")}
-              className="rounded-full px-3 py-1 text-sm text-primary transition hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-            >
-              Show all categories
-            </button>
-          )}
-        </div>
-
-        {loading ? <LoadingState label="Gathering creations…" /> : error ? <p role="alert" className="py-10 text-on-surface-variant">{error}</p> : creations.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/15 p-12 text-center"><h2 className="text-xl">No posts yet</h2><p className="mt-3 text-on-surface-variant">Be the first to share a creation.</p></div>
-        ) : <MasonryGrid
-          creations={filteredCreations}
-          onCreationClick={(creation) =>
-            navigate(`/creations/${encodeURIComponent(creation.id)}`)
-          }
-        />}
-        {data?.hasMore && <button type="button" disabled={loadingMore} onClick={loadMore} className="mt-8 rounded-full border border-primary/40 px-6 py-3 text-primary">{loadingMore ? 'Loading…' : 'Load more creations'}</button>}
-      </section>
-    </main>
-  );
+export default function ExplorePage({searchQuery='',activeCategory,onCategoryChange}) {
+  const {data}=useApi('/categories');
+  const [search,setSearch]=useState(searchQuery);
+  useEffect(()=>{const timer=setTimeout(()=>setSearch(searchQuery.trim().slice(0,200)),300);return()=>clearTimeout(timer);},[searchQuery]);
+  return <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 pb-16 sm:px-6 lg:px-10"><ExploreHero/><FilterBar activeCategory={activeCategory} onCategoryChange={onCategoryChange} customCategories={data?.categories??[]}/><ImageFeed key={activeCategory+':'+search} category={activeCategory} search={search}/></main>;
 }
-
-export default ExplorePage;

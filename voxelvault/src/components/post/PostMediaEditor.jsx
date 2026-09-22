@@ -1,3 +1,4 @@
+import { confirmAction } from '../../lib/confirm';
 import Icon from '../ui/Icon';
 import { useState } from "react";
 import FileDropZone from "../ui/FileDropZone";
@@ -18,7 +19,8 @@ function PostMediaEditor({ images, onChange, onAddFiles }) {
     setActiveIndex(0);
   }
 
-  function removeImage(index) {
+  async function removeImage(index) {
+    if(!await confirmAction('Remove this image from the draft? Save to apply the change.'))return;
     onChange(images.filter((_, imageIndex) => imageIndex !== index));
     setActiveIndex(0);
   }
@@ -66,11 +68,11 @@ function PostMediaEditor({ images, onChange, onAddFiles }) {
       />
 
       {images.length > 0 && (
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="vault-filmstrip mt-5">
           {images.map((image, index) => (
             <div
               key={image.src}
-              className="overflow-hidden rounded-xl border border-white/10 bg-black/15"
+              className="w-40 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/15"
             >
               <button
                 type="button"

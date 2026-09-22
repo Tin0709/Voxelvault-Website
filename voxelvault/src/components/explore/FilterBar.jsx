@@ -17,7 +17,7 @@ function FilterBar({ activeCategory, onCategoryChange, customCategories = [] }) 
       <div
         role="group"
         aria-label="Build categories"
-        className="flex flex-wrap gap-2 sm:gap-3"
+        className="vault-filmstrip !py-2"
       >
         {options.map((category) => {
           const isActive = activeCategory === category.id;
@@ -29,7 +29,7 @@ function FilterBar({ activeCategory, onCategoryChange, customCategories = [] }) 
               aria-pressed={isActive}
               onClick={() => onCategoryChange(category.id)}
               className={`
-                rounded-full border px-5 py-2.5
+                shrink-0 whitespace-nowrap rounded-full border px-5 py-2.5
                 text-sm font-medium transition-colors
                 focus-visible:outline-none
                 focus-visible:ring-2 focus-visible:ring-primary

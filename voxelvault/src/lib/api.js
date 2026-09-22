@@ -23,7 +23,7 @@ export async function api(path, options = {}) {
   if (options.method === 'POST' && path === '/me/profile') notify('Your profile changes have been saved.','success','Profile updated');
   return body;
 }
-export async function uploadFile(file, kind, onProgress) {
+export async function uploadFile(file, kind, onProgress, {silent=false} = {}) {
   const authHeaders = await headers();
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -36,7 +36,7 @@ export async function uploadFile(file, kind, onProgress) {
     xhr.ontimeout = () => {notify('Upload timed out. Retry this file.','error');reject(new Error('Upload timed out. Retry this file.'));};
     xhr.onload = () => {
       let body; try { body = JSON.parse(xhr.responseText); } catch { reject(new Error('Upload service unavailable')); return; }
-      if (xhr.status >= 200 && xhr.status < 300) {notify(`${file.name} is stored successfully.`,'success','Upload complete');resolve(body);}
+      if (xhr.status >= 200 && xhr.status < 300) {if(!silent)notify(`${file.name} is stored successfully.`,'success','Upload complete');resolve(body);}
       else {notify(body.error || 'Upload failed','error');reject(new Error(body.error || 'Upload failed'));}
     };
     xhr.send(file);

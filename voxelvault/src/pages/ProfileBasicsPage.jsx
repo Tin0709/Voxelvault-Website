@@ -1,3 +1,4 @@
+import { confirmAction } from '../lib/confirm';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useApi } from '../lib/useApi';
@@ -103,15 +104,16 @@ function ProfileForm({ initial }) {
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-xl font-semibold"><Icon name="image" className="text-primary"/>Visual identity</h2><Link to={`/creators/${profile.id}`} className="text-sm text-primary hover:underline">View public profile ↗</Link></div>
         <div className="relative overflow-hidden rounded-xl border border-white/10 bg-primary/5">
           {(cover?.url || (!coverRemoved&&profile.coverUrl)) ? <img src={cover?.url || profile.coverUrl} alt="Cover preview" className="aspect-[16/5] w-full object-cover"/> : <div className="flex aspect-[16/5] items-center justify-center bg-gradient-to-br from-primary/20 via-background to-primary/5 text-primary"><Icon name="image" className="!h-10 !w-10"/></div>}
+                  {(cover || (!coverRemoved&&profile.coverId))&&<button type="button" onClick={async()=>{if(!await confirmAction('Remove your cover image? Save to apply the change.'))return;setCover(null);setCoverRemoved(true);cachedCover.current=null;}} aria-label="Remove cover" title="Remove cover" className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-red-200 hover:bg-black"><Icon name="trash"/></button>}
           <span className="absolute left-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs text-primary">PUBLIC COVER</span>
         </div>
         <FileDropZone label="Choose cover image" prompt="Drop a new background image" hint="Landscape recommended · Up to 5 MB · Public image" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" multiple={false} disabled={saving} onFiles={chooseCover}/>
-        {(cover || (!coverRemoved&&profile.coverId))&&<button type="button" onClick={()=>{setCover(null);setCoverRemoved(true);cachedCover.current=null;}} className="text-sm text-primary"><Icon name="trash"/> Remove cover</button>}
-        <div className="flex items-center gap-5 rounded-xl bg-black/20 p-4">
+
+        <div className="flex flex-col items-center justify-center gap-5 rounded-xl text-center bg-black/20 p-4">
           <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-primary/40 bg-primary/10 text-3xl text-primary">
             {avatarUrl ? <img src={avatarUrl} alt="Avatar preview" className="h-full w-full object-cover" /> : name.trim().slice(0,2).toUpperCase() || 'VV'}
           </div>
-          <div><p className="font-medium">Profile photo</p><p className="mt-1 text-xs text-on-surface-variant">Your photo is public.</p>{avatarUrl && <button type="button" onClick={() => {setAvatar(null);setRemoved(true);cachedUpload.current=null;setMessage('');}} className="mt-3 text-sm text-primary hover:underline">Remove photo</button>}</div>
+          <div><p className="font-medium">Profile photo</p><p className="mt-1 text-xs text-on-surface-variant">Your photo is public.</p>{avatarUrl && <button type="button" onClick={async() => {if(!await confirmAction('Remove your profile photo? Save to apply the change.'))return;setAvatar(null);setRemoved(true);cachedUpload.current=null;setMessage('');}} className="mt-3 text-sm text-primary hover:underline">Remove photo</button>}</div>
         </div>
         <FileDropZone label="Choose your profile photo" prompt="Drag & drop your photo here" hint="JPG, PNG, WebP, AVIF or GIF · Up to 5 MB. Changes upload when you save." accept="image/jpeg,image/png,image/webp,image/avif,image/gif" multiple={false} disabled={saving} onFiles={chooseAvatar} />
         <h2 id="personal" className="flex scroll-mt-32 items-center gap-2 border-t border-white/10 pt-6 text-xl font-semibold"><Icon name="user" className="text-primary"/>Public information</h2>

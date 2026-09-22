@@ -1,3 +1,4 @@
+import { confirmAction } from '../../lib/confirm';
 function ExternalDownloadsEditor({ links, onChange }) {
   const inputClass = "mt-2 w-full rounded-xl border border-white/10 bg-background px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15";
 
@@ -29,7 +30,7 @@ function ExternalDownloadsEditor({ links, onChange }) {
               <input type="url" value={link.url} onChange={(event) => update(link.id, "url", event.target.value)} required maxLength={4096}
                 placeholder="https://drive.google.com/... or https://mega.nz/..." className={inputClass} />
             </label>
-            <button type="button" onClick={() => onChange(links.filter((item) => item.id !== link.id))}
+            <button type="button" onClick={async() => {if(await confirmAction('Remove this external link?'))onChange(links.filter((item) => item.id !== link.id));}}
               aria-label={`Remove external link ${index + 1}`}
               className="mt-3 rounded-lg px-3 py-2 text-sm text-red-300 hover:bg-red-400/10">Remove link</button>
           </fieldset>

@@ -108,5 +108,22 @@ test('migration, owner isolation, quota, publish, deletion and orphan cleanup', 
     await assert.rejects(pg.query('update public.upload_sessions set post_id=$1 where id=$2',[avatarPost,cover]),/Profile images cannot/);
     await saveCover(owner,4,null,null);
     assert.equal((await pg.query('select * from public.claim_cleanup($1)',[owner])).rows.some(row=>row.id===cover),true);
+    await pg.exec(await readFile(new URL('../supabase/migrations/202609220004_image_feed.sql',import.meta.url),'utf8'));
+    for(let n=0;n<65;n++) {
+      const imageId=randomUUID();await reserve(imageId,10,'image');
+      await pg.query("update public.upload_sessions set status='ready',post_id=$1 where id=$2",[avatarPost,imageId]);
+      await pg.query('insert into public.post_images(post_id,upload_id,position,alt) values($1,$2,$3,$4)',[avatarPost,imageId,n,'Image '+n]);
+    }
+    const seed=randomUUID();
+    const first=(await pg.query("select * from public.image_feed($1,'','','',30)",[seed])).rows;
+    const again=(await pg.query("select * from public.image_feed($1,'','','',30)",[seed])).rows;
+    assert.deepEqual(first,again);
+    const second=(await pg.query("select * from public.image_feed($1,$2,'','',30)",[seed,first.at(-1).sort_key])).rows;
+    const last=(await pg.query("select * from public.image_feed($1,$2,'','',30)",[seed,second.at(-1).sort_key])).rows;
+    assert.equal(new Set([...first,...second,...last].map(row=>row.image_id)).size,65);
+    assert.equal((await pg.query("select * from public.image_feed($1,'','unknown','',30)",[seed])).rows.length,0);
+    assert.equal((await pg.query("select * from public.image_feed($1,'','','Avatar',30)",[seed])).rows.length,30);
+    await pg.exec('set role anon');
+    await assert.rejects(pg.query("select * from public.image_feed($1,'','','',30)",[seed]),/permission denied/);
   } finally { await pg.close(); }
 });

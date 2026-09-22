@@ -1,3 +1,4 @@
+import { confirmAction } from '../../lib/confirm';
 import Icon, { FileIcon } from '../ui/Icon';
 import { useState } from "react";
 import FileDropZone from "../ui/FileDropZone";
@@ -59,7 +60,7 @@ function PostAttachmentsEditor({ attachments, onAdd, onRemove }) {
               </p>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <span className="text-xs text-primary">{attachment.status === 'ready' ? 'Stored privately' : 'Selected locally · Upload on save'}</span>
-                <button type="button" onClick={() => onRemove(attachment.id)}
+                <button type="button" onClick={async() => {if(await confirmAction('Remove this attachment? Save to apply the change.'))onRemove(attachment.id);}}
                   aria-label={`Remove ${attachment.originalName}`}
                   className="rounded-lg px-3 py-2 text-sm text-red-300 hover:bg-red-400/10"><Icon name="trash" className="mr-1 !h-4 !w-4"/>Remove</button>
               </div>

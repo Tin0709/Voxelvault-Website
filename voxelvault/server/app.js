@@ -144,6 +144,21 @@ const server = http.createServer(async (req, res) => {
     const path = url.pathname;
     if (path === '/api/health') { json(res,200,{ configured, r2Configured: Boolean(r2) }); return; }
     if (!db) throw fail(503, 'Backend not configured. Follow docs/BACKEND_SETUP.md.');
+    if (path === '/api/feed' && req.method === 'GET') {
+      const seed=requireUuid(url.searchParams.get('seed'));
+      const after=url.searchParams.get('after')||'';
+      const category=url.searchParams.get('category')||'';
+      const search=url.searchParams.get('search')||'';
+      if(after.length>80||category.length>80||search.length>200)throw fail(400,'Invalid feed request');
+      const rows=checked(await db.rpc('image_feed',{p_seed:seed,p_after:after,p_category:category,p_search:search,p_limit:31}));
+      const page=rows.slice(0,30);
+      json(res,200,{items:page.map(row=>({id:row.image_id,postId:row.post_id,imageId:row.image_id,title:row.title,category:row.category,creator:row.creator,creatorId:row.creator_id,image:publicImage(row),alt:row.alt,creatorAvatar:row.avatar_key?publicImage({object_key:row.avatar_key}):''})),next:rows.length>30?page.at(-1).sort_key:null});return;
+    }
+    if (path === '/api/categories' && req.method === 'GET') {
+      const categories=new Set();
+      for(let offset=0;;offset+=1000){const rows=checked(await db.from('posts').select('category').order('id').range(offset,offset+999));rows.forEach(row=>categories.add(row.category));if(rows.length<1000)break;}
+      json(res,200,{categories:[...categories].sort()});return;
+    }
     if (path === '/api/posts' && req.method === 'GET') {
       const mine = url.searchParams.get('mine') === 'true';
       const user = await userFor(req, mine);

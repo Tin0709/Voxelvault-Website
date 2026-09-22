@@ -1,9 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useApi } from "../lib/useApi";
 import { usePostList } from "../lib/usePostList";
 import RequestState from "../components/ui/RequestState";
 import { formatBytes } from "../utils/attachments";
+import { useAuth } from '../auth/AuthContext';
+import { listDrafts,deleteDraft } from '../lib/drafts';
+import { confirmAction } from '../lib/confirm';
+import { notify } from '../lib/notifications';
+import Icon from '../components/ui/Icon';
 
 function normalizeText(value) {
   return value
@@ -14,6 +19,10 @@ function normalizeText(value) {
 }
 
 function MyPostsPage() {
+  const {user}=useAuth();
+  const [drafts,setDrafts]=useState([]);
+  const [draftError,setDraftError]=useState('');
+  useEffect(()=>{let active=true;listDrafts(user.id).then(rows=>{if(active)setDrafts(rows);}).catch(()=>{if(active)setDraftError('Local drafts could not be loaded. Browser storage may be unavailable.');});return()=>{active=false;};},[user.id]);
   const [query, setQuery] = useState("");
   const { data, loading, error, loadingMore, loadMore } = usePostList('/posts?mine=true');
   const storage = useApi('/me/storage');
@@ -56,6 +65,9 @@ function MyPostsPage() {
       <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-on-surface-variant">
         {storage.error || (storage.data ? `Storage used or reserved: ${formatBytes(storage.data.usedBytes)} / ${formatBytes(storage.data.quotaBytes)}` : 'Loading storage usage…')}
       </p>
+
+      {draftError&&<p role="alert" className="mt-5 text-amber-200">{draftError}</p>}
+      {drafts.length>0&&<section className="mt-8" aria-label="Unfinished drafts"><h2 className="flex items-center gap-2 text-xl text-amber-200"><Icon name="edit"/>Continue where you left off</h2><p className="mt-2 text-xs text-on-surface-variant">Private drafts saved on this browser, including your selected files. They are not published or synced to other devices.</p><div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{drafts.map(row=><article key={row.id} className="rounded-2xl border border-amber-400/25 bg-amber-900/15 p-5"><p className="flex items-center gap-2 text-xs uppercase tracking-wider text-amber-300"><Icon name="edit"/>Unfinished {row.mode==='edit'?'edit':'post'}</p><h3 className="mt-3 break-words text-xl">{row.draft.title||'Untitled draft'}</h3><p className="mt-2 text-xs text-on-surface-variant">{row.draft.gallery?.length||0} images · {row.draft.attachments?.length||0} files · {new Date(row.updatedAt).toLocaleString()}</p><div className="mt-5 flex gap-3"><Link to={`/drafts/${row.draftId}`} className="rounded-full bg-amber-200 px-4 py-2 text-sm text-black">Continue editing</Link><button type="button" aria-label={`Delete draft ${row.draft.title||'Untitled draft'}`} onClick={async()=>{if(!await confirmAction('Delete this local draft and its selected files? Published posts are not affected.','Delete draft'))return;try{await deleteDraft(user.id,row.draftId);setDrafts(items=>items.filter(item=>item.id!==row.id));notify('Draft deleted.');}catch{notify('Draft could not be deleted.','error');}}} className="rounded-full border border-amber-300/20 px-3 text-amber-200"><Icon name="trash"/></button></div></article>)}</div></section>}
 
       <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="w-full sm:max-w-md">
@@ -150,7 +162,7 @@ function MyPostsPage() {
         </div>
       ) : (
         <div className="mt-6 rounded-2xl border border-dashed border-white/15 px-6 py-16 text-center">
-          <h2 className="font-headline-lg text-xl">{creations.length ? 'No posts found' : 'Create your first post'}</h2>
+          <h2 className="font-headline-lg text-xl">{creations.length ? 'No posts found' : drafts.length ? 'No published posts yet' : 'Create your first post'}</h2>
 
           <p className="mt-3 text-sm text-on-surface-variant">
             {creations.length ? 'Try another title or category.' : 'Your account is empty. Add public images, source credit and your private files.'}

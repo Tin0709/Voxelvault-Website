@@ -224,3 +224,18 @@ Ngày 22/09/2026: toàn bộ kịch bản trên đã đạt với cấu hình ph
 bao gồm upload/download Supabase và R2, và dữ liệu kiểm thử đã được xóa.
 Kiểm thử này không điều khiển trình duyệt: vẫn cần kiểm tra kéo thả, tiến trình
 upload trên giao diện, mobile và hành vi retry khi mạng gián đoạn.
+
+## Image feed and unfinished drafts
+
+Apply `supabase/migrations/202609220004_image_feed.sql` once after earlier migrations.
+The service-only RPC powers `/api/feed` with seeded random order and cursor pagination.
+Explore loads individual images automatically; it stops when all matching images have
+been shown rather than duplicating a finite collection. Selecting an image changes
+only the initial gallery view, not the published cover.
+
+Unfinished posts are stored in IndexedDB on the current browser, scoped to the signed-in
+account, including selected image and attachment File objects. They appear in My Posts
+with an amber draft style. They are not published or synced across devices. Use Finish
+later before closing/reloading; native browser unload warnings cannot save files for you.
+Clearing site data removes these local drafts. Publishing removes the corresponding
+local draft after the server confirms the post was saved.

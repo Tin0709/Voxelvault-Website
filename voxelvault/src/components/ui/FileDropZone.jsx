@@ -63,7 +63,7 @@ function FileDropZone({ label, prompt, hint, accept, onFiles, multiple = true, d
         }}
         onDragEnd={resetDrag}
         onDrop={handleDrop}
-        className={`rounded-xl border-2 border-dashed p-5 transition-colors focus-within:border-primary ${
+        className={`rounded-xl border-2 border-dashed p-5 text-center transition-colors focus-within:border-primary ${
           dragging ? "border-primary bg-primary/15" : "border-white/20 bg-black/10"
         }`}
       >
@@ -85,7 +85,7 @@ function FileDropZone({ label, prompt, hint, accept, onFiles, multiple = true, d
             setError("");
             if (files.length) onFiles(files);
           }}
-          className="mt-3 block w-full min-w-0 text-sm text-on-surface-variant file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-on-primary"
+          className="mx-auto mt-3 block w-full max-w-xs min-w-0 text-sm text-on-surface-variant file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-on-primary"
         />
       </div>
       <p id={`${inputId}-hint`} className="mt-2 text-xs leading-relaxed text-on-surface-variant">{hint}</p>

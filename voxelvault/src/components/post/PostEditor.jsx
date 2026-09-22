@@ -1,7 +1,9 @@
+import { useAuth } from '../../auth/AuthContext';
+import { saveDraft, deleteDraft } from '../../lib/drafts';
 import CategoryPicker from './CategoryPicker';
 import Icon from '../ui/Icon';
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useBlocker } from "react-router";
 import { api, uploadFile } from "../../lib/api";
 import { notify } from '../../lib/notifications';
 import { useApi } from '../../lib/useApi';
@@ -26,7 +28,14 @@ const panelClass = "vault-panel p-6 sm:p-8";
 const inputClass =
   "mt-2 w-full rounded-xl border border-white/10 bg-background px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
 
-function PostEditor({ creation, mode = "edit" }) {
+function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPostId }) {
+  const { user } = useAuth();
+  const ownerId=useRef(user.id);
+  const localDraftId=useRef(draftId || crypto.randomUUID());
+  const bypass=useRef(false);
+  const leaveDialog=useRef(null);
+  const [draftBusy,setDraftBusy]=useState(false);
+  const [pendingLeave,setPendingLeave]=useState(null);
   const navigate = useNavigate();
   const { data: personalCategories } = useApi('/me/categories');
   const previewRef = useRef(null);
@@ -36,8 +45,8 @@ function PostEditor({ creation, mode = "edit" }) {
   const [saveError, setSaveError] = useState('');
   const [uploadProgress, setUploadProgress] = useState({});
   const savedUploads = useRef(new Map());
-  const postId = useRef(mode === 'create' ? crypto.randomUUID() : creation.id);
-  const [draft, setDraft] = useState(() => ({
+  const postId = useRef(restoredPostId || (mode === 'create' ? crypto.randomUUID() : creation.id));
+  const [draft, setDraft] = useState(() => initialDraft || ({
     ...creation,
     title: creation.title ?? "",
     category: creation.category ?? "uncategorized",
@@ -64,6 +73,23 @@ function PostEditor({ creation, mode = "edit" }) {
           ]
         : [],
   }));
+
+  const [baseline]=useState(draft);
+  const dirty=draft!==baseline;
+  const blocker=useBlocker(()=>dirty&&!bypass.current);
+  useEffect(()=>{if(blocker.state==='blocked'||pendingLeave)leaveDialog.current?.showModal();else leaveDialog.current?.close();},[blocker.state,pendingLeave]);
+  useEffect(()=>{const guard=event=>{if(dirty&&!bypass.current){event.preventDefault();setPendingLeave(()=>event.detail.proceed);}};window.addEventListener('vault:before-signout',guard);return()=>window.removeEventListener('vault:before-signout',guard);},[dirty]);
+  function continueEditing(){if(draftBusy)return;setPendingLeave(null);if(blocker.state==='blocked')blocker.reset();}
+  useEffect(()=>{const warn=e=>{if(dirty&&!bypass.current){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[dirty]);
+  async function keepDraft() {
+    setDraftBusy(true);setSaveError('');
+    try {
+      await saveDraft(ownerId.current,localDraftId.current,{creation,mode,draft,postId:postId.current});
+      bypass.current=true;notify('Your draft and selected files are saved in this browser.','success','Continue later');
+      if(pendingLeave)await pendingLeave();else if(blocker.state==='blocked')blocker.proceed();else navigate('/my-posts');
+    }catch(error){setSaveError('Could not save the draft: '+error.message);notify('Draft could not be saved. Stay on this page and try again.','error');}
+    finally{setDraftBusy(false);}
+  }
 
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
@@ -113,6 +139,8 @@ function PostEditor({ creation, mode = "edit" }) {
   async function savePost() {
     if (!preview || saving) return;
     setSaving(true); setSaveError('');
+    const currentKeys = new Set([...preview.gallery, ...preview.attachments].filter(item => item.file).map(item => item.src || item.id));
+    setUploadProgress(current => Object.fromEntries(Object.entries(current).filter(([key]) => currentKeys.has(key))));
     async function ensureUploaded(item, kind) {
       if (!item.file) return { id: item.id, alt: item.alt ?? '' };
       const key = item.src || item.id;
@@ -120,7 +148,7 @@ function PostEditor({ creation, mode = "edit" }) {
       const update = (progress, status) => setUploadProgress((current) => ({ ...current, [key]: { name: item.file.name, progress, status } }));
       update(0,'uploading');
       try {
-        const result = await uploadFile(item.file, kind, (percent) => update(percent, percent === 100 ? 'verifying' : 'uploading'));
+        const result = await uploadFile(item.file, kind, (percent) => update(percent, percent === 100 ? 'verifying' : 'uploading'), {silent:true});
         const record = { id: result.id, alt: item.alt ?? '' };
         savedUploads.current.set(key, record);
         update(100,'complete'); return record;
@@ -137,6 +165,8 @@ function PostEditor({ creation, mode = "edit" }) {
         originalCreator: preview.originalCreator, originalSource: preview.originalSource, creditUrl: preview.creditUrl,
         version: creation.version ?? 0, images, attachments, externalDownloads: preview.externalDownloads,
       }) });
+      bypass.current=true;
+      await deleteDraft(ownerId.current,localDraftId.current).catch(()=>notify('Post saved, but its local draft could not be removed.','info'));
       navigate(`/creations/${postId.current}`);
     } catch (error) { setSaveError(error.message); } finally { setSaving(false); }
   }
@@ -347,7 +377,7 @@ function PostEditor({ creation, mode = "edit" }) {
             </p>
 
             <p className="mt-2 text-xs text-on-surface-variant">
-              Preview your changes, then publish to save. Unsaved changes are lost when you leave or refresh.
+              Preview, then publish. Use Finish later to keep a private draft on this browser before closing or refreshing.
             </p>
           </div>
 
@@ -481,6 +511,7 @@ function PostEditor({ creation, mode = "edit" }) {
         )}
         <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-primary/5 p-5">
           <p className="text-sm text-on-surface-variant"><Icon name="eye" className="mr-2 text-primary"/>Review your showcase before publishing.</p>
+          <button type="button" disabled={saving||draftBusy} onClick={keepDraft} className="rounded-full border border-amber-300/30 px-5 py-3 text-sm text-amber-200"><Icon name="save" className="mr-2"/>{draftBusy?'Saving draft…':'Finish later'}</button>
           <button
             type="submit"
             className="vault-action rounded-full bg-primary px-6 py-3 text-sm font-medium text-on-primary transition hover:opacity-90"
@@ -567,12 +598,12 @@ function PostEditor({ creation, mode = "edit" }) {
             </ul>
           </div>
           <div className="mt-6">
-            <ul className="space-y-3" aria-live="polite">
-              {Object.entries(uploadProgress).map(([key, item]) => <li key={key} className="break-words text-sm">
-                <p>{item.name} — {({uploading:'Uploading',verifying:'Verifying storage',complete:'Uploaded',failed:'Failed; retry or remove the file'})[item.status]}</p>
-                <progress max="100" value={item.progress} aria-label={`Upload ${item.name}`} className="mt-2 w-full accent-primary" />
-              </li>)}
-            </ul>
+            {Object.keys(uploadProgress).length>0 && <div role="status" className="rounded-xl border border-primary/20 bg-black/20 p-5">
+              <p className="text-sm text-primary">{Object.values(uploadProgress).filter(item=>item.status==='complete').length} / {preview.gallery.filter(item=>item.file).length+preview.attachments.filter(item=>item.file).length} files uploaded</p>
+              <progress max={Math.max(1,preview.gallery.filter(item=>item.file).length+preview.attachments.filter(item=>item.file).length)*100} value={Object.values(uploadProgress).reduce((sum,item)=>sum+(item.status==='complete'?100:Math.min(item.progress,95)),0)} className="mt-3 h-2 w-full accent-primary" aria-label="Total upload progress"/>
+              <p className="mt-2 truncate text-xs text-on-surface-variant">{Object.values(uploadProgress).find(item=>item.status!=='complete')?.name || 'Files uploaded. Saving post…'}</p>
+              <details className="mt-3 text-xs text-on-surface-variant"><summary className="cursor-pointer">File details</summary><ul className="mt-2 max-h-40 overflow-y-auto space-y-1">{Object.entries(uploadProgress).map(([key,item])=><li key={key} className="break-words">{item.name} · {item.status}</li>)}</ul></details>
+            </div>}
             {saveError && <p role="alert" className="mt-4 text-red-300">{saveError}</p>}
             <button type="button" disabled={saving} onClick={savePost} className="vault-action mt-5 inline-flex items-center gap-3 rounded-full bg-primary px-6 py-3 text-sm text-on-primary disabled:opacity-50">
               {saving && <span aria-hidden="true" className="vault-spinner !h-4 !w-4 !border-on-primary/30 !border-t-on-primary" />}
@@ -581,6 +612,11 @@ function PostEditor({ creation, mode = "edit" }) {
           </div>
         </section>
       )}
+      <dialog ref={leaveDialog} className="vault-dialog" onCancel={e=>{e.preventDefault();continueEditing();}}>
+        <div className="p-7"><p className="text-xs uppercase tracking-widest text-amber-300">Unfinished post</p><h2 className="mt-3 text-xl">Keep your work?</h2><p className="mt-3 text-sm text-on-surface-variant">Save your content and selected files as a private draft on this browser, or keep editing. Nothing will be published.</p>
+        {saveError&&<p role="alert" className="mt-3 text-red-300">{saveError}</p>}
+        <div className="mt-6 flex flex-wrap justify-end gap-3"><button autoFocus type="button" disabled={draftBusy} onClick={continueEditing} className="rounded-full border border-white/20 px-5 py-3">Continue editing</button><button type="button" disabled={saving||draftBusy} onClick={keepDraft} className="rounded-full bg-amber-200 px-5 py-3 text-black">{draftBusy?'Saving…':'Finish later'}</button></div></div>
+      </dialog>
     </main>
   );
 }

@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 function PostGallery({ creation }) {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const images = creation.gallery?.length
+  const strip = useRef(null);
+  const originalImages = creation.gallery?.length
     ? creation.gallery
     : [{ src: creation.image, alt: creation.alt }];
 
+  const picked=originalImages.find(image=>image.id===creation.selectedImageId);
+  const images=picked?[picked,...originalImages.filter(image=>image!==picked)]:originalImages;
   const activeImage = images[activeIndex] ?? images[0];
 
   return (
@@ -39,7 +42,7 @@ function PostGallery({ creation }) {
       </div>
 
       {images.length > 1 && (
-        <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-5">
+        <div className="rounded-b-2xl border border-t-0 border-white/10 bg-black/20 p-2"><div className="flex items-center justify-between px-2 pt-2 text-xs text-on-surface-variant"><span>{images.length} photos · Scroll to explore</span><span><button type="button" aria-label="Scroll thumbnails left" onClick={()=>strip.current?.scrollBy({left:-280,behavior:'smooth'})} className="px-3 py-2">←</button><button type="button" aria-label="Scroll thumbnails right" onClick={()=>strip.current?.scrollBy({left:280,behavior:'smooth'})} className="px-3 py-2">→</button></span></div><div ref={strip} className="vault-filmstrip">
           {images.map((image, index) => (
             <button
               key={`${image.src}-${index}`}
@@ -47,7 +50,7 @@ function PostGallery({ creation }) {
               onClick={() => setActiveIndex(index)}
               aria-label={`Show image ${index + 1}`}
               aria-pressed={index === activeIndex}
-              className={`overflow-hidden rounded-xl border-2 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
+              className={`w-28 shrink-0 overflow-hidden rounded-xl sm:w-36 border-2 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
                 index === activeIndex
                   ? "border-primary opacity-100"
                   : "border-transparent opacity-60 hover:opacity-100"
@@ -61,7 +64,7 @@ function PostGallery({ creation }) {
               />
             </button>
           ))}
-        </div>
+        </div></div>
       )}
     </section>
   );
