@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+
 import Brand from '../ui/Brand';
 
 function Footer() {
@@ -18,12 +18,7 @@ function Footer() {
       <div className="mx-auto max-w-[1600px] px-6 py-10 lg:px-10">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <Link
-              to="/"
-              className="font-headline-lg text-xl tracking-tight text-on-surface"
-            >
-              <Brand />
-            </Link>
+            <Brand />
 
             <p className="mt-2 max-w-sm text-sm leading-relaxed text-on-surface-variant">
               A home for extraordinary worlds and the ideas behind them.

@@ -1,3 +1,4 @@
+import ProgressBar from '../components/ui/ProgressBar';
 import { confirmAction } from '../lib/confirm';
 import Icon, { FileIcon } from '../components/ui/Icon';
 import { useEffect, useState } from "react";
@@ -112,7 +113,7 @@ function PostDetailPage() {
             }}><Icon name="trash" className="mr-2 !h-4 !w-4"/>Delete post</button>}
         </div>
       </div>
-      {actionError && <p role="alert" className="mb-5 text-red-300">{actionError}</p>}
+      {busy && <div className="my-4"><ProgressBar label="Processing your request…"/></div>}{actionError && <p role="alert" className="mb-5 text-red-300">{actionError}</p>}
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
         <div className="min-w-0 space-y-6 lg:col-span-7 xl:col-span-8">

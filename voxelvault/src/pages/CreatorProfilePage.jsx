@@ -1,3 +1,4 @@
+import VaultLoader from '../components/ui/VaultLoader';
 import { useAuth } from '../auth/AuthContext';
 import Icon from '../components/ui/Icon';
 import { notify } from '../lib/notifications';
@@ -131,7 +132,7 @@ function CreatorProfilePage({ own = false }) {
           </div>
         )}
       </section>
-      {posts.data?.hasMore && <button type="button" disabled={posts.loadingMore} onClick={posts.loadMore} className="mt-8 rounded-full border border-primary/40 px-6 py-3 text-primary">{posts.loadingMore ? 'Loading…' : 'Load more posts'}</button>}
+      {posts.data?.hasMore && <button type="button" disabled={posts.loadingMore} onClick={posts.loadMore} className="mt-8 rounded-full border border-primary/40 px-6 py-3 text-primary">{posts.loadingMore ? <span className="inline-flex items-center gap-2"><VaultLoader compact/>Loading…</span> : 'Load more posts'}</button>}
     </main>
   );
 }

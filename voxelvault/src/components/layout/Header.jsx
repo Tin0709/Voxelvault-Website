@@ -1,4 +1,4 @@
-import { Link, NavLink, useLocation } from 'react-router';
+import { NavLink, useLocation } from 'react-router';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import Brand from '../ui/Brand';
@@ -32,7 +32,7 @@ export default function Header({ searchQuery, onSearchChange }) {
   </>;
   return <header className="sticky top-0 z-50 border-b border-white/10 bg-background/95 backdrop-blur-xl" onKeyDown={e=>{if(e.key==='Escape'){setOpenAt(null);document.getElementById('navigation-toggle')?.focus();}}}>
     <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-10">
-      <Link to="/" aria-label="VoxelVault home"><Brand /></Link>
+      <Brand />
       <button id="navigation-toggle" type="button" aria-expanded={open} aria-controls="main-navigation" aria-label={open?'Close navigation':'Open navigation'} onClick={()=>setOpenAt(open?null:location.key)} className="ml-auto flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 text-primary xl:hidden">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d={open?'M6 6l12 12M6 18L18 6':'M4 6h16M4 12h16M4 18h16'} /></svg>
       </button>
@@ -43,7 +43,7 @@ export default function Header({ searchQuery, onSearchChange }) {
       <nav aria-label="Main navigation" className="order-1 ml-3 hidden items-center gap-2 xl:flex">{navigation}</nav>
       <dialog ref={drawer} id="main-navigation" className="vault-drawer" onCancel={e=>{e.preventDefault();setOpenAt(null);}} onClick={e=>{if(e.target===e.currentTarget){const rect=e.currentTarget.getBoundingClientRect();if(e.clientX<rect.left)setOpenAt(null);}}}>
         <div className="mb-8 flex items-center justify-between"><span className="text-xs uppercase tracking-widest text-primary">Your vault</span><button type="button" aria-label="Close navigation" onClick={()=>setOpenAt(null)} className="rounded-full border border-white/10 px-4 py-2">×</button></div>
-        <Brand/><nav aria-label="Mobile navigation" className="mt-8 flex flex-col items-stretch gap-3">{navigation}</nav>
+        <Brand onNavigate={()=>setOpenAt(null)}/><nav aria-label="Mobile navigation" className="mt-8 flex flex-col items-stretch gap-3">{navigation}</nav>
       </dialog>
     </div>
   </header>;

@@ -1,0 +1,314 @@
+
+    .voxelvault-single-loop-logo {
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overflow: visible;
+      background: transparent;
+    }
+
+    
+    .single-cube-master,
+    .single-cube-geom,
+    .single-shadow-rig,
+    .single-shockwave-rig,
+    .energy-sparkle-1,
+    .energy-sparkle-2,
+    .energy-core-pulse {
+      will-change: transform, opacity;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+    }
+
+    
+    .single-cube-master {
+      transform-origin: 140px 145px;
+      transform: translateY(0px) scale(1, 1) rotate(0deg);
+    }
+
+    .single-shadow-rig {
+      transform-origin: 140px 186px;
+      transform: scale(1, 1);
+      opacity: 0.8;
+    }
+
+    .single-shockwave-rig {
+      transform-origin: 140px 186px;
+      transform: scale(0.3);
+      opacity: 0;
+    }
+
+    .energy-sparkle-1, .energy-sparkle-2 {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+
+    .energy-core-pulse {
+      opacity: 0;
+      transform: scale(0.85);
+    }
+
+    
+    @keyframes singleLoopCubeMorph {
+      0% {
+        transform: translateY(0px) scale(1, 1) rotate(0deg);
+        animation-timing-function: cubic-bezier(0.25, 0.9, 0.35, 1);
+      }
+      
+      14% {
+        transform: translateY(6px) scale(1.16, 0.86) rotate(-1deg);
+        animation-timing-function: cubic-bezier(0.2, 1, 0.3, 1);
+      }
+      
+      36% {
+        transform: translateY(-28px) scale(0.9, 1.14) rotate(4deg);
+        animation-timing-function: cubic-bezier(0.45, 0.05, 0.7, 0.5);
+      }
+      
+      54% {
+        transform: translateY(-30px) scale(1.06, 0.96) rotate(-2deg);
+        animation-timing-function: cubic-bezier(0.6, 0.05, 0.8, 0.55);
+      }
+      
+      76% {
+        transform: translateY(4px) scale(1.14, 0.88) rotate(0.8deg);
+        animation-timing-function: cubic-bezier(0.25, 0.9, 0.4, 1);
+      }
+      
+      90% {
+        transform: translateY(-3px) scale(0.98, 1.02) rotate(-0.4deg);
+        animation-timing-function: cubic-bezier(0.35, 0.9, 0.45, 1);
+      }
+      
+      100% {
+        transform: translateY(0px) scale(1, 1) rotate(0deg);
+      }
+    }
+
+    @keyframes singleLoopShadowMorph {
+      0% {
+        transform: scale(1, 1);
+        opacity: 0.8;
+      }
+      14% {
+        transform: scale(1.18, 1.1);
+        opacity: 0.95;
+      }
+      36% {
+        transform: scale(0.65, 0.65);
+        opacity: 0.3;
+      }
+      54% {
+        transform: scale(0.6, 0.6);
+        opacity: 0.25;
+      }
+      76% {
+        transform: scale(1.22, 1.12);
+        opacity: 0.95;
+      }
+      90% {
+        transform: scale(0.92, 0.92);
+        opacity: 0.7;
+      }
+      100% {
+        transform: scale(1, 1);
+        opacity: 0.8;
+      }
+    }
+
+    @keyframes singleLoopShockwaveRipple {
+      0%, 28% {
+        transform: scale(0.3);
+        opacity: 0;
+      }
+      38% {
+        opacity: 0.75;
+      }
+      65% {
+        transform: scale(1.35);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(1.35);
+        opacity: 0;
+      }
+    }
+
+    @keyframes singleLoopSparklePop {
+      0%, 25% {
+        opacity: 0;
+        transform: scale(0.3) translateY(0);
+      }
+      45% {
+        opacity: 1;
+        transform: scale(1.2) translateY(-6px);
+      }
+      70% {
+        opacity: 0;
+        transform: scale(0.5) translateY(-14px);
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+
+    @keyframes singleLoopCoreEnergyGlow {
+      0%, 20% {
+        opacity: 0;
+        transform: scale(0.85);
+      }
+      48% {
+        opacity: 0.9;
+        transform: scale(1.08);
+      }
+      75% {
+        opacity: 0.2;
+        transform: scale(0.95);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(0.85);
+      }
+    }
+
+    
+    .vv-brand-active .single-cube-master {
+      animation: singleLoopCubeMorph 1.0s cubic-bezier(0.2, 0.8, 0.3, 1) 1 forwards;
+    }
+    .vv-brand-active .single-shadow-rig {
+      animation: singleLoopShadowMorph 1.0s cubic-bezier(0.2, 0.8, 0.3, 1) 1 forwards;
+    }
+    .vv-brand-active .single-shockwave-rig {
+      animation: singleLoopShockwaveRipple 1.0s ease-out 1 forwards;
+    }
+    .vv-brand-active .energy-sparkle-1 {
+      animation: singleLoopSparklePop 1.0s ease-out 1 forwards;
+    }
+    .vv-brand-active .energy-sparkle-2 {
+      animation: singleLoopSparklePop 1.0s ease-out 1 0.08s forwards;
+    }
+    .vv-brand-active .energy-core-pulse {
+      animation: singleLoopCoreEnergyGlow 1.0s ease-out 1 forwards;
+    }
+
+    
+    .voxelvault-single-loop-logo:not(.vv-brand-active) .single-cube-master {
+      transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .voxelvault-single-loop-logo:not(.vv-brand-active) .single-shadow-rig {
+      transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s ease;
+    }
+  
+    .voxel-three-cubes-loader {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      background: transparent;
+      user-select: none;
+    }
+
+    
+    .cube-unit-1, .cube-unit-2, .cube-unit-3,
+    .shadow-unit-1, .shadow-unit-2, .shadow-unit-3 {
+      will-change: transform, opacity;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+    }
+
+    
+    @keyframes voxelOscillateBounce {
+      0% {
+        transform: translateY(0px) scale(1, 1) rotate(0deg);
+        animation-timing-function: cubic-bezier(0.25, 0.9, 0.35, 1);
+      }
+      32% {
+        transform: translateY(-28px) scale(0.92, 1.1) rotate(1.5deg);
+        animation-timing-function: cubic-bezier(0.55, 0.05, 0.8, 0.45);
+      }
+      65% {
+        transform: translateY(3px) scale(1.15, 0.88) rotate(-0.8deg);
+        animation-timing-function: cubic-bezier(0.2, 0.85, 0.35, 1);
+      }
+      82% {
+        transform: translateY(-5px) scale(0.97, 1.04) rotate(0.4deg);
+        animation-timing-function: cubic-bezier(0.4, 0.05, 0.7, 0.6);
+      }
+      100% {
+        transform: translateY(0px) scale(1, 1) rotate(0deg);
+      }
+    }
+
+    @keyframes voxelShadowPulse {
+      0% {
+        transform: scale(1, 1);
+        opacity: 0.8;
+        animation-timing-function: cubic-bezier(0.25, 0.9, 0.35, 1);
+      }
+      32% {
+        transform: scale(0.6, 0.6);
+        opacity: 0.25;
+        animation-timing-function: cubic-bezier(0.55, 0.05, 0.8, 0.45);
+      }
+      65% {
+        transform: scale(1.22, 1.12);
+        opacity: 0.95;
+        animation-timing-function: cubic-bezier(0.2, 0.85, 0.35, 1);
+      }
+      82% {
+        transform: scale(0.9, 0.9);
+        opacity: 0.65;
+        animation-timing-function: cubic-bezier(0.4, 0.05, 0.7, 0.6);
+      }
+      100% {
+        transform: scale(1, 1);
+        opacity: 0.8;
+      }
+    }
+
+    
+    .cube-unit-1 {
+      transform-origin: 75px 105px;
+      animation: voxelOscillateBounce 0.75s infinite;
+      animation-delay: 0s;
+    }
+    .shadow-unit-1 {
+      transform-origin: 75px 132px;
+      animation: voxelShadowPulse 0.75s infinite;
+      animation-delay: 0s;
+    }
+
+    
+    .cube-unit-2 {
+      transform-origin: 170px 105px;
+      animation: voxelOscillateBounce 0.75s infinite;
+      animation-delay: 0.14s;
+    }
+    .shadow-unit-2 {
+      transform-origin: 170px 132px;
+      animation: voxelShadowPulse 0.75s infinite;
+      animation-delay: 0.14s;
+    }
+
+    
+    .cube-unit-3 {
+      transform-origin: 265px 105px;
+      animation: voxelOscillateBounce 0.75s infinite;
+      animation-delay: 0.28s;
+    }
+    .shadow-unit-3 {
+      transform-origin: 265px 132px;
+      animation: voxelShadowPulse 0.75s infinite;
+      animation-delay: 0.28s;
+    }
+  
+.voxelvault-single-loop-logo { width:52px; height:52px; flex-shrink:0; }
+.voxel-three-cubes-loader { width:272px; max-width:100%; height:144px; flex-shrink:0; }
+.voxel-three-cubes-loader.vv-loader-compact { width:48px; height:26px; }
+@media(prefers-reduced-motion:reduce){
+ .voxelvault-single-loop-logo *, .voxel-three-cubes-loader * { animation:none!important; transition:none!important; }
+}
+.vv-progress-indeterminate { animation: vv-progress-travel 1.5s ease-in-out infinite; }
+@keyframes vv-progress-travel { from {transform:translateX(-100%);} to {transform:translateX(390%);} }
+@media(prefers-reduced-motion:reduce){.vv-progress-indeterminate {animation:none;transform:translateX(90%);}}

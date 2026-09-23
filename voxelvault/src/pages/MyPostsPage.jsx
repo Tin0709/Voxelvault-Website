@@ -1,3 +1,5 @@
+import LoadingState from '../components/ui/LoadingState';
+import VaultLoader from '../components/ui/VaultLoader';
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useApi } from "../lib/useApi";
@@ -63,7 +65,7 @@ function MyPostsPage() {
       </div>
 
       <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-on-surface-variant">
-        {storage.error || (storage.data ? `Storage used or reserved: ${formatBytes(storage.data.usedBytes)} / ${formatBytes(storage.data.quotaBytes)}` : 'Loading storage usage…')}
+        {storage.error || (storage.data ? `Storage used or reserved: ${formatBytes(storage.data.usedBytes)} / ${formatBytes(storage.data.quotaBytes)}` : <LoadingState compact label="Loading storage usage…"/>)}
       </p>
 
       {draftError&&<p role="alert" className="mt-5 text-amber-200">{draftError}</p>}
@@ -179,7 +181,7 @@ function MyPostsPage() {
           )}
         </div>
       )}
-      {data?.hasMore && <button type="button" disabled={loadingMore} onClick={loadMore} className="mt-8 rounded-full border border-primary/40 px-6 py-3 text-primary">{loadingMore ? 'Loading…' : 'Load more posts'}</button>}
+      {data?.hasMore && <button type="button" disabled={loadingMore} onClick={loadMore} className="mt-8 rounded-full border border-primary/40 px-6 py-3 text-primary">{loadingMore ? <span className="inline-flex items-center gap-2"><VaultLoader compact/>Loading…</span> : 'Load more posts'}</button>}
     </main>
   );
 }

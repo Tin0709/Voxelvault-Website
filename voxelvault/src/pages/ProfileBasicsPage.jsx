@@ -1,3 +1,4 @@
+import ProgressBar from '../components/ui/ProgressBar';
 import { confirmAction } from '../lib/confirm';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -34,6 +35,7 @@ function ProfileForm({ initial }) {
   const [removed, setRemoved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState(null);
+  const [progressName,setProgressName] = useState('Uploading profile image…');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const cachedUpload = useRef(null);
@@ -65,11 +67,11 @@ function ProfileForm({ initial }) {
     try {
       let avatarId = removed ? null : profile.avatarId;
       if (avatar) {
-        if (!cachedUpload.current) cachedUpload.current = await uploadFile(avatar.file,'image',setProgress);
+        if (!cachedUpload.current) { setProgressName(avatar.file.name); setProgress(0); cachedUpload.current = await uploadFile(avatar.file,'image',setProgress); }
         avatarId = cachedUpload.current.id;
       }
       let coverId=coverRemoved?null:profile.coverId;
-      if(cover){if(!cachedCover.current)cachedCover.current=await uploadFile(cover.file,'image',setProgress);coverId=cachedCover.current.id;}
+      if(cover){if(!cachedCover.current){setProgressName(cover.file.name);setProgress(0);cachedCover.current=await uploadFile(cover.file,'image',setProgress);}coverId=cachedCover.current.id;}
       const result = await api('/me/profile',{method:'POST',body:JSON.stringify({name,bio,country,avatarId,coverId,version:profile.version})});
       setProfile(result); setName(result.name); setAvatar(null); setRemoved(false); cachedUpload.current=null;
       setCover(null);setCoverRemoved(false);cachedCover.current=null;
@@ -121,7 +123,7 @@ function ProfileForm({ initial }) {
         <label className="block text-sm font-medium">Country of residence<select className={inputClass} value={country} onChange={e=>{setCountry(e.target.value);setMessage('');}} autoComplete="country"><option value="">Prefer not to say</option>{countries.map(c=><option key={c.code} value={c.code}>{c.name}</option>)}</select></label>
         <label className="block text-sm font-medium">About you<textarea className={`${inputClass} resize-y`} value={bio} onChange={e=>{setBio(e.target.value);setMessage('');}} maxLength={1000} rows={4} placeholder="Tell people a little about yourself and what you create." /></label>
         <p className="text-xs text-on-surface-variant">Your name, photo, country and bio are public. Your email is private.</p>
-        {progress !== null && <div role="status" className="text-sm text-primary">{progress===100?'Verifying photo…':`Uploading photo… ${progress}%`}<progress className="mt-2 w-full accent-primary" max={100} value={progress} aria-label="Avatar upload" /></div>}
+        {progress !== null && <ProgressBar label={progressName} value={progress}/> }
         {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
         {message && <p role="status" className="text-sm text-primary">{message}</p>}
         <button className={buttonClass} disabled={saving}><Icon name="save"/> {saving?'Saving…':'Save changes'}</button>

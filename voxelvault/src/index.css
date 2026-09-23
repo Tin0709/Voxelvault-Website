@@ -1,3 +1,4 @@
+@import './components/ui/animations.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -45,7 +46,6 @@ body {
 .vault-settings-link:hover { background:#68dba910; color:#68dba9; }
 .vault-card-enter { animation: vault-enter .48s cubic-bezier(.2,.7,.2,1) both; }
 .vault-preview, .vault-menu-enter { animation: vault-enter .35s ease-out both; }
-.vault-spinner { width: 28px; height: 28px; border: 2px solid #68dba933; border-top-color: #68dba9; border-right-color: #68dba9; border-radius: 50%; animation: vault-spin .85s linear infinite; }
 .vault-loading { animation: vault-enter .25s ease-out; }
 .vault-action { transition: transform .18s ease, box-shadow .18s ease, background .18s ease; }
 .vault-action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 24px #68dba92b; }
@@ -61,3 +61,4 @@ body {
   *, *::before, *::after { animation-duration:.01ms !important; animation-delay:0ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
   .vault-action:hover:not(:disabled), .vault-action:active:not(:disabled) { transform:none; }
 }
+

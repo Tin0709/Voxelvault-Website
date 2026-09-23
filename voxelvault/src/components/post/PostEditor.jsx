@@ -1,3 +1,5 @@
+import ProgressBar from '../ui/ProgressBar';
+import VaultLoader from '../ui/VaultLoader';
 import { useAuth } from '../../auth/AuthContext';
 import { saveDraft, deleteDraft } from '../../lib/drafts';
 import CategoryPicker from './CategoryPicker';
@@ -600,13 +602,13 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
           <div className="mt-6">
             {Object.keys(uploadProgress).length>0 && <div role="status" className="rounded-xl border border-primary/20 bg-black/20 p-5">
               <p className="text-sm text-primary">{Object.values(uploadProgress).filter(item=>item.status==='complete').length} / {preview.gallery.filter(item=>item.file).length+preview.attachments.filter(item=>item.file).length} files uploaded</p>
-              <progress max={Math.max(1,preview.gallery.filter(item=>item.file).length+preview.attachments.filter(item=>item.file).length)*100} value={Object.values(uploadProgress).reduce((sum,item)=>sum+(item.status==='complete'?100:Math.min(item.progress,95)),0)} className="mt-3 h-2 w-full accent-primary" aria-label="Total upload progress"/>
+              <ProgressBar label={Object.values(uploadProgress).find(item=>item.status!=='complete')?.name || 'Saving post…'} value={Object.values(uploadProgress).reduce((sum,item)=>sum+(item.status==='complete'?100:Math.min(item.progress,95)),0)/Math.max(1,preview.gallery.filter(item=>item.file).length+preview.attachments.filter(item=>item.file).length)}/>
               <p className="mt-2 truncate text-xs text-on-surface-variant">{Object.values(uploadProgress).find(item=>item.status!=='complete')?.name || 'Files uploaded. Saving post…'}</p>
               <details className="mt-3 text-xs text-on-surface-variant"><summary className="cursor-pointer">File details</summary><ul className="mt-2 max-h-40 overflow-y-auto space-y-1">{Object.entries(uploadProgress).map(([key,item])=><li key={key} className="break-words">{item.name} · {item.status}</li>)}</ul></details>
             </div>}
             {saveError && <p role="alert" className="mt-4 text-red-300">{saveError}</p>}
             <button type="button" disabled={saving} onClick={savePost} className="vault-action mt-5 inline-flex items-center gap-3 rounded-full bg-primary px-6 py-3 text-sm text-on-primary disabled:opacity-50">
-              {saving && <span aria-hidden="true" className="vault-spinner !h-4 !w-4 !border-on-primary/30 !border-t-on-primary" />}
+              {saving && <VaultLoader compact />}
               {!saving&&<Icon name="upload"/>}{saving ? 'Uploading and saving…' : saveError ? 'Retry save' : isCreating ? 'Publish post' : 'Save changes'}
             </button>
           </div>
