@@ -1,4 +1,6 @@
 const paths = {
+  chevronRight:'m9 6 6 6-6 6',
+  arrowUpRight:'M7 17 17 7 M7 7h10v10',
   search:'M21 21l-6-6 M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0',
   compass:'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M15 6l-2 7-4 5 2-7z',
   logout:'M10 17v3H3V4h7v3 M8 12h13m-4-4 4 4-4 4',
