@@ -51,7 +51,7 @@ function PostDetailPage() {
           This link may be incorrect or the creation may have been removed.
         </p>
 
-        <Link to="/" className="mt-6 inline-block text-primary">
+        <Link to="/explore" className="mt-6 inline-block text-primary">
           ← Back to Explore
         </Link>
       </main>
@@ -71,7 +71,7 @@ function PostDetailPage() {
           className="flex min-w-0 items-center gap-3 text-sm"
         >
           <Link
-            to="/"
+            to="/explore"
             className="shrink-0 text-on-surface-variant hover:text-primary"
           >
             ← Explore
@@ -149,7 +149,7 @@ function PostDetailPage() {
               {creation.title}
             </h1>
 
-            <div className="mt-6 flex items-center gap-3 rounded-xl bg-white/5 p-4">
+            <Link to={`/creators/${encodeURIComponent(creation.creatorId || creation.ownerId)}`} className="mt-6 flex items-center gap-3 rounded-xl bg-white/5 p-4 transition hover:bg-primary/10">
               <span
                 aria-hidden="true"
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15 font-semibold text-primary"
@@ -159,20 +159,9 @@ function PostDetailPage() {
 
               <div className="min-w-0">
                 <p className="text-xs text-on-surface-variant">Posted by</p>
-                {creation.creatorId ? (
-                  <Link
-                    to={`/creators/${encodeURIComponent(creation.creatorId)}`}
-                    className="block break-words text-sm font-medium transition hover:text-primary"
-                  >
-                    {creation.creator}
-                  </Link>
-                ) : (
-                  <p className="break-words text-sm font-medium">
-                    {creation.creator}
-                  </p>
-                )}
+                <span className="block break-words text-sm font-medium text-primary">{creation.creator}</span>
               </div>
-            </div>
+            </Link>
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">

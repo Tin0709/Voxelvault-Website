@@ -1,12 +1,14 @@
 import {Link} from 'react-router';
-import {useState} from 'react';
+import {useState,useRef,useEffect} from 'react';
 import {useApi} from '../../lib/useApi';
 import {formatBytes} from '../../utils/attachments';
 import Icon from '../ui/Icon';
 import Brand from '../ui/Brand';
 
 function MenuLink({to,onNavigate,children,className='',...props}){
- return <Link to={to} {...props} className={className} onClick={e=>{if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();onNavigate(to);}}>{children}</Link>;
+ const timer=useRef(null);const [playing,setPlaying]=useState(false);
+ useEffect(()=>()=>clearTimeout(timer.current),[]);
+ return <Link to={to} {...props} className={`${className} ${playing?'vv-menu-playing':''}`} onClick={e=>{if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();if(playing)return;if(to==='/create'&&!matchMedia('(prefers-reduced-motion:reduce)').matches){setPlaying(true);timer.current=setTimeout(()=>onNavigate(to),400);}else onNavigate(to);}}>{children}</Link>;
 }
 function AccountMenu({onNavigate,pathname,user}){
  const profile=useApi('/me/profile');
@@ -31,12 +33,12 @@ export default function MobileMenu({user,busy,pathname,query,onSearch,onNavigate
   <div className="vv-menu-brand"><Brand onFollow={onNavigate}/><small>SPATIAL ARCHIVE</small></div>
   <form role="search" className="vv-menu-search" onSubmit={e=>{e.preventDefault();onSearch(search);}}><Icon name="search"/><label className="sr-only" htmlFor="mobile-search">Search creations</label><input id="mobile-search" type="search" enterKeyHint="search" placeholder="Search worlds, builds…" value={search} onChange={e=>setSearch(e.target.value)}/><button type="submit" aria-label="Search"><Icon name="arrowUpRight"/></button></form>
   <nav aria-label="Mobile navigation" className="vv-menu-links">
-   <MenuLink to="/" onNavigate={onNavigate} aria-current={pathname==='/'?'page':undefined} className="vv-menu-row"><span className="vv-menu-icon"><Icon name="compass"/></span><span><strong>Explore</strong><small>Discover worlds & creations</small></span><span className="vv-menu-chevron"><Icon name="chevronRight"/></span></MenuLink>
+   <MenuLink to="/explore" onNavigate={onNavigate} aria-current={pathname==='/explore'?'page':undefined} className="vv-menu-row"><span className="vv-menu-icon"><Icon name="compass"/></span><span><strong>Explore</strong><small>Discover worlds & creations</small></span><span className="vv-menu-chevron"><Icon name="chevronRight"/></span></MenuLink>
    {user&&<MenuLink to="/my-posts" onNavigate={onNavigate} aria-current={pathname==='/my-posts'?'page':undefined} className="vv-menu-row"><span className="vv-menu-icon"><Icon name="archive"/></span><span><strong>My Posts</strong><small>Manage your posts & files</small></span><span className="vv-menu-chevron"><Icon name="chevronRight"/></span></MenuLink>}
    <MenuLink to="/create" onNavigate={onNavigate} aria-current={pathname==='/create'?'page':undefined} className="vv-menu-create"><span><Icon name="plus"/></span>Create Post <small>NEW BUILD</small></MenuLink>
    {user?<AccountMenu user={user} onNavigate={onNavigate} pathname={pathname}/>:<MenuLink to="/register" onNavigate={onNavigate} className="vv-menu-row"><span className="vv-menu-icon"><Icon name="user"/></span><span><strong>Sign up</strong><small>Join the creative community</small></span><span className="vv-menu-chevron"><Icon name="chevronRight"/></span></MenuLink>}
   </nav>
-  {user?<button type="button" disabled={busy} onClick={onSignOut} className="vv-menu-signout"><Icon name="logout"/>{busy?'Signing out…':'Sign out'}<i/></button>:<MenuLink to="/login" onNavigate={onNavigate} className="vv-menu-signout"><Icon name="user"/>Sign in</MenuLink>}
+  {user&&<button type="button" disabled={busy} onClick={onSignOut} className="vv-menu-signout"><Icon name="logout"/>{busy?'Signing out…':'Sign out'}<i/></button>}
   <p className="vv-menu-footnote">VOXELVAULT <span>•</span> YOUR CREATIVE ARCHIVE</p>
  </div>;
 }

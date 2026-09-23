@@ -1,7 +1,8 @@
+import {createId} from './createId';
 import {useEffect,useRef,useState} from 'react';
 import {api} from './api';
 export function useImageFeed(category,search) {
-  const [seed]=useState(()=>crypto.randomUUID());
+  const [seed]=useState(()=>createId());
   const [state,setState]=useState({items:[],next:null,loading:true,error:''});
   const loadingMore=useRef(false);
   const alive=useRef(false);

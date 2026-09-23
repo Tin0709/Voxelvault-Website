@@ -1,3 +1,4 @@
+import {createId} from '../../lib/createId';
 import { confirmAction } from '../../lib/confirm';
 function ExternalDownloadsEditor({ links, onChange }) {
   const inputClass = "mt-2 w-full rounded-xl border border-white/10 bg-background px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15";
@@ -36,7 +37,7 @@ function ExternalDownloadsEditor({ links, onChange }) {
           </fieldset>
         ))}
       </div>
-      <button type="button" onClick={() => onChange([...links, { id: crypto.randomUUID(), name: "", url: "" }])}
+      <button type="button" onClick={() => onChange([...links, { id: createId(), name: "", url: "" }])}
         className="mt-5 w-full rounded-xl border border-dashed border-primary/40 px-4 py-3 text-sm text-primary hover:bg-primary/5">
         + Add external download link
       </button>

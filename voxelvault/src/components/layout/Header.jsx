@@ -17,7 +17,7 @@ function NavigationIndicator({bar,pathname,hidden}){
  const marker=useRef(null);
  useEffect(()=>{
   const root=bar.current;const line=marker.current;if(!root||!line)return;
-  const target=pathname==='/'?'explore':pathname==='/create'?'create':pathname.startsWith('/profile')||pathname==='/my-posts'?'profile':pathname==='/register'?'signup':null;
+  const target=pathname==='/explore'?'explore':pathname==='/create'?'create':pathname.startsWith('/profile')||pathname==='/my-posts'?'profile':pathname==='/register'?'signup':null;
   const update=()=>{const button=target&&root.querySelector(`.vv-nav-${target}`);if(!button||!button.getBoundingClientRect().width){line.style.opacity='0';return;}const r=button.getBoundingClientRect();const parent=root.getBoundingClientRect();line.style.transform=`translateX(${r.left-parent.left+r.width/2-22}px)`;line.style.opacity=hidden?'0':'1';};
   update();const observer=new ResizeObserver(update);observer.observe(root);root.querySelectorAll('.vv-nav,.vv-search,.vv-desktop-navigation').forEach(e=>observer.observe(e));window.addEventListener('resize',update);
   return()=>{observer.disconnect();window.removeEventListener('resize',update);};
@@ -38,7 +38,7 @@ export default function Header({searchQuery,onSearchChange}){
  async function logout(){const event=new CustomEvent('vault:before-signout',{cancelable:true,detail:{proceed:performLogout}});if(window.dispatchEvent(event))await performLogout();}
  return <header className="sticky top-0 z-50 border-b border-white/10 bg-background/95 backdrop-blur-xl">
   <div ref={bar} className="vv-header-bar mx-auto flex max-w-[1600px] items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
-   <Brand/><div className="hidden xl:block"><AnimatedNav name="explore" label="Explore" to="/"/></div>
+   <Brand/><div className="hidden xl:block"><AnimatedNav name="explore" label="Explore" to="/explore"/></div>
    <nav aria-label="Main navigation" className="vv-desktop-navigation ml-auto hidden items-center xl:flex"><SearchField searchQuery={searchQuery} onSearchChange={onSearchChange} onFocusChange={setSearchFocused}/><AnimatedNav name="create" label="Create" to="/create"/>{user&&<AnimatedNav name="profile" label="Profile" to="/profile"/>}{user?<AnimatedNav name="signout" label={busy?'Signing out…':'Sign out'} onAction={logout} disabled={busy}/>:<AnimatedNav name="signup" label="Sign up" to="/register"/>}</nav>
    <NavigationIndicator bar={bar} pathname={location.pathname} hidden={searchFocused}/>
    <button id="navigation-toggle" type="button" aria-expanded={phase!=='closed'} aria-controls="main-navigation" aria-label="Open navigation" onClick={open} className="ml-auto flex h-11 w-11 items-center justify-center rounded-xl border border-primary/25 text-primary xl:hidden"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Route, Routes, useLocation, useNavigate } from "react-router";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
+import HomePage from './pages/HomePage';
 import ExplorePage from "./pages/ExplorePage";
 import PostDetailPage from "./pages/PostDetailPage";
 import EditPostPage from "./pages/EditPostPage";
@@ -25,8 +26,8 @@ function App() {
   function handleSearchChange(value) {
     setSearchQuery(value);
 
-    if (location.pathname !== "/") {
-      navigate("/");
+    if (location.pathname !== "/explore") {
+      navigate("/explore");
     }
   }
 
@@ -36,8 +37,9 @@ function App() {
       <div key={location.pathname} className="vault-route flex flex-1 flex-col min-w-0">
 
       <Routes>
+        <Route path="/" element={<HomePage />} />
         <Route
-          path="/"
+          path="/explore"
           element={
             <ExplorePage
               searchQuery={searchQuery}
@@ -60,7 +62,7 @@ function App() {
           element={
             <main className="w-full flex-1 px-6 py-20 text-center">
               <h1 className="text-3xl">Page not found</h1>
-              <Link to="/" className="mt-6 inline-block text-primary">
+              <Link to="/explore" className="mt-6 inline-block text-primary">
                 Back to Explore
               </Link>
             </main>

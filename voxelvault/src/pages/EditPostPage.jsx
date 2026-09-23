@@ -17,7 +17,7 @@ function EditPostPage() {
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-6 py-20 lg:px-10">
         <h1 className="font-headline-lg text-3xl">Creation not found</h1>
 
-        <Link to="/" className="mt-6 inline-block text-primary">
+        <Link to="/explore" className="mt-6 inline-block text-primary">
           ← Back to Explore
         </Link>
       </main>

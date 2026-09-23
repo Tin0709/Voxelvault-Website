@@ -34,7 +34,7 @@ function CreatorProfilePage({ own = false }) {
           This profile is unavailable or the link is incorrect.
         </p>
 
-        <Link to="/" className="mt-6 inline-block text-primary hover:underline">
+        <Link to="/explore" className="mt-6 inline-block text-primary hover:underline">
           ← Back to Explore
         </Link>
       </main>
@@ -48,7 +48,7 @@ function CreatorProfilePage({ own = false }) {
   return (
     <main className="vault-page-enter mx-auto w-full max-w-[1600px] flex-1 px-6 pb-16 pt-8 lg:px-10">
       <Link
-        to="/"
+        to="/explore"
         className="text-sm text-on-surface-variant hover:text-primary"
       >
         ← Back to Explore

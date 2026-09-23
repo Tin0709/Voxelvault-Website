@@ -104,7 +104,7 @@ function AuthPage({ mode = "login" }) {
           </p>
 
           <Link
-            to="/"
+            to="/explore"
             className="mt-7 inline-block text-sm text-primary hover:underline"
           >
             ← Keep exploring

@@ -12,7 +12,7 @@ export function createApi({ db = null, r2 = null, env = {} } = {}) {
 const configured = Boolean(db);
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const checked = ({ data, error }) => { if (error) throw error; return data; };
-const allowedOrigin = env.APP_ORIGIN || 'http://localhost:5173';
+const allowedOrigins = new Set([env.APP_ORIGIN || 'http://localhost:5173', ...(env.APP_ORIGINS || '').split(',').map(value=>value.trim()).filter(Boolean)]);
 
 async function userFor(req, required = false) {
   const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
@@ -134,7 +134,7 @@ async function upload(req, res, user, url) {
 const server = http.createServer(async (req, res) => {
   try {
     const origin = req.headers.origin;
-    if (origin && origin !== allowedOrigin) throw fail(403, 'Origin not allowed');
+    if (origin && !allowedOrigins.has(origin)) throw fail(403, 'Origin not allowed');
     if (origin) { res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Access-Control-Expose-Headers','Content-Disposition'); res.setHeader('Vary','Origin'); }
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Headers','Authorization,Content-Type');
@@ -153,7 +153,9 @@ const server = http.createServer(async (req, res) => {
       if(after.length>80||category.length>80||search.length>200)throw fail(400,'Invalid feed request');
       const rows=checked(await db.rpc('image_feed',{p_seed:seed,p_after:after,p_category:category,p_search:search,p_limit:31}));
       const page=rows.slice(0,30);
-      json(res,200,{items:page.map(row=>({id:row.image_id,postId:row.post_id,imageId:row.image_id,title:row.title,category:row.category,creator:row.creator,creatorId:row.creator_id,image:publicImage(row),alt:row.alt,creatorAvatar:row.avatar_key?publicImage({object_key:row.avatar_key}):''})),next:rows.length>30?page.at(-1).sort_key:null});return;
+      const descriptions=page.length?checked(await db.from('posts').select('id,description').in('id',[...new Set(page.map(row=>row.post_id))])):[];
+      const byPost=new Map(descriptions.map(post=>[post.id,post.description]));
+      json(res,200,{items:page.map(row=>({id:row.image_id,postId:row.post_id,imageId:row.image_id,title:row.title,description:byPost.get(row.post_id)||'',category:row.category,creator:row.creator,creatorId:row.creator_id,image:publicImage(row),alt:row.alt,creatorAvatar:row.avatar_key?publicImage({object_key:row.avatar_key}):''})),next:rows.length>30?page.at(-1).sort_key:null});return;
     }
     if (path === '/api/categories' && req.method === 'GET') {
       const categories=new Set();
@@ -167,8 +169,9 @@ const server = http.createServer(async (req, res) => {
       if (mine) query = query.eq('owner_id', user.id);
       if (url.searchParams.has('creator')) query = query.eq('owner_id', requireUuid(url.searchParams.get('creator')));
       const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
-      const posts = checked(await query.range(offset, offset + 49));
-      json(res,200,{ posts: await Promise.all(posts.map((p) => hydrate(p, mine))), hasMore: posts.length === 50 }); return;
+      const limit=Math.min(50,Math.max(1,Number(url.searchParams.get('limit'))||50));
+      const posts = checked(await query.range(offset, offset + limit-1));
+      json(res,200,{ posts: await Promise.all(posts.map((p) => hydrate(p, mine))), hasMore: posts.length === limit }); return;
     }
     if (/^\/api\/profiles\/[^/]+$/.test(path) && req.method === 'GET') {
       json(res,200,await profileFor(requireUuid(path.split('/').pop()))); return;

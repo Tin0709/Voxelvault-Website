@@ -1,3 +1,4 @@
+import {createId} from '../../lib/createId';
 const inputClass =
   "mt-2 w-full rounded-xl border border-white/10 bg-background px-4 py-3 text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/15";
 
@@ -6,7 +7,7 @@ function PostDownloadsEditor({ downloads, onChange }) {
     onChange([
       ...downloads,
       {
-        id: crypto.randomUUID(),
+        id: createId(),
         name: "",
         url: "",
         format: "",

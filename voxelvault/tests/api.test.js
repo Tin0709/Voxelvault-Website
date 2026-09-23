@@ -37,6 +37,7 @@ function fakeBackend() {
         update(values) {change={type:'update',values};return query;},
         delete() {change={type:'delete'};return query;},
         eq(key,value) { rows=rows.filter((row)=>row[key]===value); return query; },
+        in(key,values) { rows=rows.filter(row=>values.includes(row[key])); return query; },
         order() { return query; },
         range(start,end) { rows=rows.slice(start,end+1); return query; },
         single() { return Promise.resolve(result(true)); },
@@ -46,6 +47,7 @@ function fakeBackend() {
       return query;
     },
     async rpc(name,args) {
+      if (name==='image_feed') return {data:[{image_id:file,post_id:post,title:'Public post',category:'art',creator:'Owner',creator_id:owner,object_key:'public-image',sort_key:'a'}],error:null};
       if (name==='reserve_upload') {
         const record={id:args.p_id,owner_id:args.p_owner,original_name:args.p_name,size_bytes:args.p_size,kind:args.p_kind,
           provider:storageFor(args.p_kind,args.p_size),bucket:args.p_kind==='image'?'showcase':'attachments',object_key:args.p_id,status:'pending'};
@@ -158,4 +160,27 @@ test('uploads route small private files to Supabase, large files to R2 and rejec
     assert.equal(db.tables.upload_sessions.length,count);
     assert.equal(db.storageWrites.length,1);
   });
+});
+
+test('explicit LAN origins are accepted without allowing arbitrary origins or bypassing auth',async()=>{
+ await running({db:fakeBackend(),env:{APP_ORIGINS:'http://192.168.1.234:5173'}},async base=>{
+  for(const origin of ['http://localhost:5173','http://192.168.1.234:5173']){
+   const response=await fetch(`${base}/api/health`,{headers:{Origin:origin}});
+   assert.equal(response.status,200);assert.equal(response.headers.get('access-control-allow-origin'),origin);
+   assert.equal((await fetch(`${base}/api/me/storage/details`,{headers:{Origin:origin}})).status,401);
+  }
+  for(const origin of ['http://192.168.1.234:9999','http://192.168.1.235:5173','https://untrusted.example'])assert.equal((await fetch(`${base}/api/health`,{headers:{Origin:origin}})).status,403);
+ });
+});
+
+test('image feed includes public description without private attachment metadata',async()=>{
+ await running({db:fakeBackend()},async base=>{
+  const response=await fetch(base+'/api/feed?seed='+owner);
+  assert.equal(response.status,200);
+  const result=await response.json();
+  assert.equal(result.items[0].description,'Public');
+  assert.equal(result.items[0].creatorId,owner);
+  assert.equal(result.next,null);
+  assert.equal(JSON.stringify(result).includes('secret.zip'),false);
+ });
 });

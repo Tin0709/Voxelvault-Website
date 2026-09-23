@@ -1,3 +1,4 @@
+import {createId} from '../../lib/createId';
 import { confirmAction } from '../../lib/confirm';
 import Icon, { FileIcon } from '../ui/Icon';
 import { useState } from "react";
@@ -12,7 +13,7 @@ function PostAttachmentsEditor({ attachments, onAdd, onRemove }) {
     setRejectedNames(selectedFiles.filter(exceedsUploadLimit).map((file) => file.name));
     const files = selectedFiles.filter((file) => !exceedsUploadLimit(file)).map((file) => ({
       ...describeFile(file),
-      id: crypto.randomUUID(),
+      id: createId(),
       file,
       status: "selected",
     }));

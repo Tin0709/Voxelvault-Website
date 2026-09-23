@@ -246,3 +246,21 @@ Removal claims only the authenticated owner's ready/unattached or retryable dele
 uploads under the same account lock used by post/profile saves. Active profile images,
 post image/attachment references and pending uploads are rejected. Quota is released
 only after the storage provider confirms removal. A failed deletion remains retryable.
+
+## Test trên điện thoại trong mạng nội bộ
+
+- Giữ API chạy bằng `npm run server` (cổng 8787 chỉ cần bind `127.0.0.1`).
+- Chạy frontend bằng `npm run dev -- --host 0.0.0.0`.
+- Giữ `VITE_API_URL` trống để điện thoại dùng `/api` qua Vite proxy, không gọi localhost của điện thoại.
+- Trong `.env.server.local`, thêm origin LAN cụ thể vào `APP_ORIGINS`, ví dụ `APP_ORIGINS=http://192.168.1.234:5173`, rồi restart API. Nhiều origin phân cách bằng dấu phẩy; không dùng wildcard. Giữ `APP_ORIGIN` hiện tại cho localhost.
+- Điện thoại và máy tính cùng mạng; mở URL Ethernet/Wi-Fi từ Vite (ví dụ `http://192.168.1.234:5173`). Địa chỉ WSL/Hyper-V hoặc VPN thường không dùng được từ điện thoại trên Wi-Fi.
+- Nếu IP/cổng thay đổi, cập nhật URL và `APP_ORIGINS`. Nếu không kết nối được, kiểm tra Windows Firewall cho Node trên mạng Private.
+- HTTP LAN không có `crypto.randomUUID`; ứng dụng dùng `getRandomValues` để tạo UUID v4. Các tính năng riêng yêu cầu HTTPS và đăng nhập OAuth vẫn phụ thuộc chính sách trình duyệt/provider cùng danh sách redirect URL của Supabase.
+
+### Google/Facebook quay về localhost trên điện thoại
+
+Trong Supabase Dashboard → Authentication → URL Configuration → Redirect URLs, thêm chính xác `http://192.168.1.234:5173/login` (thay IP/cổng bằng địa chỉ đang mở trên điện thoại). Giữ redirect localhost hiện có để test trên máy tính. Không đặt Site URL sản xuất thành IP LAN.
+
+Ứng dụng đã gửi `redirectTo: window.location.origin + '/login'`. Nếu URL không được cho phép, Supabase có thể dùng Site URL mặc định (thường là localhost). Trên điện thoại localhost là chính điện thoại, nên sẽ báo connection failed. Sau khi lưu, bắt đầu đăng nhập lại từ URL LAN, không dùng lại callback cũ. Khi IP thay đổi cần cập nhật redirect URL.
+
+Google/Facebook vẫn dùng callback HTTPS của dự án Supabase trong cấu hình provider (`https://<project-ref>.supabase.co/auth/v1/callback`), không đổi callback của provider thành IP LAN. Tài liệu: https://supabase.com/docs/guides/auth/redirect-urls

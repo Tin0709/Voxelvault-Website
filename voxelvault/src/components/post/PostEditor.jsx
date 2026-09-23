@@ -1,5 +1,6 @@
+import {createId} from '../../lib/createId';
 import ProgressBar from '../ui/ProgressBar';
-import VaultLoader from '../ui/VaultLoader';
+
 import { useAuth } from '../../auth/AuthContext';
 import { saveDraft, deleteDraft } from '../../lib/drafts';
 import CategoryPicker from './CategoryPicker';
@@ -33,7 +34,7 @@ const inputClass =
 function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPostId }) {
   const { user } = useAuth();
   const ownerId=useRef(user.id);
-  const localDraftId=useRef(draftId || crypto.randomUUID());
+  const localDraftId=useRef(draftId || createId());
   const bypass=useRef(false);
   const leaveDialog=useRef(null);
   const [draftBusy,setDraftBusy]=useState(false);
@@ -46,7 +47,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
   const [saveError, setSaveError] = useState('');
   const [uploadProgress, setUploadProgress] = useState({});
   const savedUploads = useRef(new Map());
-  const postId = useRef(restoredPostId || (mode === 'create' ? crypto.randomUUID() : creation.id));
+  const postId = useRef(restoredPostId || (mode === 'create' ? createId() : creation.id));
   const [draft, setDraft] = useState(() => initialDraft || ({
     ...creation,
     title: creation.title ?? "",
@@ -610,7 +611,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
             </div>}
             {saveError && <p role="alert" className="mt-4 text-red-300">{saveError}</p>}
             <button type="button" disabled={saving} onClick={savePost} className="vault-action mt-5 inline-flex items-center gap-3 rounded-full bg-primary px-6 py-3 text-sm text-on-primary disabled:opacity-50">
-              {saving && <VaultLoader compact />}
+
               {!saving&&<Icon name="upload"/>}{saving ? 'Uploading and saving…' : saveError ? 'Retry save' : isCreating ? 'Publish post' : 'Save changes'}
             </button>
           </div>
