@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { notify } from './notifications';
+import { exceedsImageLimit } from '../utils/attachments';
 const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 
 async function headers() {
@@ -24,6 +25,7 @@ export async function api(path, options = {}) {
   return body;
 }
 export async function uploadFile(file, kind, onProgress, {silent=false} = {}) {
+  if(kind==='image'&&exceedsImageLimit(file))throw new Error('Images must be smaller than 5 MB. Remove this image and select a smaller file.');
   const authHeaders = await headers();
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();

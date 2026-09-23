@@ -1,0 +1,265 @@
+<svg class="explore-morph-btn-svg" id="exploreMorphBtnSvg" viewbox="0 0 260 64" xmlns="http://www.w3.org/2000/svg">
+<defs>
+
+<lineargradient id="expBtnBgGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#18181b"></stop>
+<stop offset="100%" stop-color="#111113"></stop>
+</lineargradient>
+<lineargradient id="expBtnHoverBg" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#064e3b" stop-opacity="0.45"></stop>
+<stop offset="50%" stop-color="#047857" stop-opacity="0.22"></stop>
+<stop offset="100%" stop-color="#022c22" stop-opacity="0.48"></stop>
+</lineargradient>
+<lineargradient id="expBorderGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#34d399"></stop>
+<stop offset="50%" stop-color="#10b981"></stop>
+<stop offset="100%" stop-color="#059669"></stop>
+</lineargradient>
+
+<filter height="160%" id="expNeonGlow" width="160%" x="-30%" y="-30%">
+<fegaussianblur result="blur" stddeviation="3.2"></fegaussianblur>
+<femerge>
+<femergenode in="blur"></femergenode>
+<femergenode in="SourceGraphic"></femergenode>
+</femerge>
+</filter>
+<radialgradient cx="50%" cy="50%" id="expAuraGlow" r="50%">
+<stop offset="0%" stop-color="#10b981" stop-opacity="0.45"></stop>
+<stop offset="70%" stop-color="#059669" stop-opacity="0.12"></stop>
+<stop offset="100%" stop-color="#000000" stop-opacity="0"></stop>
+</radialgradient>
+</defs>
+<style>
+    .vv-art-explore .explore-morph-btn-svg {
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overflow: visible;
+      font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Core button capsule */
+    .vv-art-explore .morph-btn-capsule {
+      transform-origin: center;
+      transition: width 0.52s cubic-bezier(0.16, 1, 0.3, 1),
+                  x 0.52s cubic-bezier(0.16, 1, 0.3, 1),
+                  stroke 0.4s ease,
+                  fill 0.4s ease,
+                  filter 0.4s ease;
+      rx: 28px;
+      ry: 28px;
+    }
+
+    .vv-art-explore .capsule-interior-highlight {
+      transition: width 0.52s cubic-bezier(0.16, 1, 0.3, 1),
+                  x 0.52s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.4s ease;
+      rx: 27px;
+      ry: 27px;
+    }
+
+    /* Outer ambient bloom */
+    .vv-art-explore .morph-btn-aura {
+      transition: opacity 0.45s ease, transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+      transform-origin: center;
+      opacity: 0;
+    }
+
+    /* Master compass icon container */
+    .vv-art-explore .compass-container-group {
+      transform-origin: 32px 32px;
+      transition: transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Outer bezel circle */
+    .vv-art-explore .compass-bezel-ring {
+      transition: stroke 0.4s ease, stroke-width 0.4s ease, filter 0.4s ease;
+      transform-origin: 32px 32px;
+    }
+
+    /* 2D Compass needle pivot (pure white 2D geometry faithful to IMAGE_2) */
+    .vv-art-explore .compass-needle-pivot {
+      transform-origin: 32px 32px;
+      transition: transform 0.75s cubic-bezier(0.22, 1.25, 0.36, 1);
+      will-change: transform;
+    }
+
+    /* Idle subtle pulse for compass needle */
+    @keyframes vv-explore-subtleNeedleIdle {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(10deg); }
+    }
+
+    .vv-art-explore .explore-morph-btn-svg:not(:is(:hover,.is-hovered,.is-open,.is-animating)):not(.is-hovered) .compass-needle-pivot {
+      animation: vv-explore-subtleNeedleIdle 4.5s ease-in-out infinite;
+    }
+
+    /* Sparkle Particle Accents */
+    .vv-art-explore .sparkle-dot {
+      transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+      transform-origin: 32px 32px;
+      opacity: 0;
+      transform: scale(0.3);
+    }
+
+    /* Typography "EXPLORE" Group & individual letters */
+    .vv-art-explore .text-explore-group {
+      pointer-events: none;
+    }
+
+    .vv-art-explore .char-letter {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(7px) scale(0.88);
+      transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.35s ease,
+                  fill 0.3s ease;
+      fill: #ffffff;
+      font-weight: 700;
+      font-size: 19px;
+      letter-spacing: 0.14em;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+
+    /* ==============================================================
+       HOVER STATE INTERACTION (.explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating))
+       - Capsule morphs: 56px circle at x=102 -> 228px pill at x=16
+       - Compass slides smoothly left to x=12
+       - 2D Needle rotates 405deg (360 + 45) with crisp spring settle
+       - Bezel illuminates in emerald neon while needle stays clean white
+       - "EXPLORE" letters cascade sequentially in the center!
+       ============================================================== */
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .morph-btn-capsule,
+    .vv-art-explore .explore-morph-btn-svg.is-hovered .morph-btn-capsule {
+      x: 16px;
+      width: 228px;
+      stroke: url(#expBorderGrad);
+      stroke-width: 1.6;
+      filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.45));
+    }
+
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .capsule-interior-highlight,
+    .vv-art-explore .explore-morph-btn-svg.is-hovered .capsule-interior-highlight {
+      x: 17px;
+      width: 226px;
+      opacity: 1;
+    }
+
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .morph-btn-aura,
+    .vv-art-explore .explore-morph-btn-svg.is-hovered .morph-btn-aura {
+      opacity: 0.92;
+      transform: scale(1.08);
+    }
+
+    /* Compass container slides leftward smoothly */
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .compass-container-group,
+    .vv-art-explore .explore-morph-btn-svg.is-hovered .compass-container-group {
+      transform: translate(12px, 0);
+    }
+
+    /* Bezel illuminates on hover */
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .compass-bezel-ring,
+    .vv-art-explore .explore-morph-btn-svg.is-hovered .compass-bezel-ring {
+      stroke: #34d399;
+      stroke-width: 3.2;
+      filter: drop-shadow(0 0 6px rgba(52, 211, 153, 0.65));
+    }
+
+    /* 2D Compass Needle dynamic rotation: 405deg */
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .compass-needle-pivot,
+    .vv-art-explore .explore-morph-btn-svg.is-hovered .compass-needle-pivot {
+      transform: rotate(405deg) scale(1.08);
+      animation: none !important;
+    }
+
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .compass-2d-needle,
+    .vv-art-explore .explore-morph-btn-svg.is-hovered .compass-2d-needle {
+      fill: #ffffff;
+      filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.85));
+    }
+
+    /* Sparkles */
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sparkle-dot-1,
+    .vv-art-explore .explore-morph-btn-svg.is-hovered .sparkle-dot-1 {
+      opacity: 1;
+      transform: translate(16px, -14px) scale(1.1);
+      transition-delay: 0.12s;
+    }
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sparkle-dot-2,
+    .vv-art-explore .explore-morph-btn-svg.is-hovered .sparkle-dot-2 {
+      opacity: 1;
+      transform: translate(-14px, 14px) scale(0.9);
+      transition-delay: 0.18s;
+    }
+
+    /* Cascading Sequential Text Reveal for "EXPLORE" (Centered) */
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-letter,
+    .vv-art-explore .explore-morph-btn-svg.is-hovered .char-letter {
+      opacity: 1;
+      transform: translateY(0px) scale(1);
+    }
+
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-e1, .vv-art-explore .explore-morph-btn-svg.is-hovered .char-e1 { transition-delay: 0.12s; }
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-x,  .vv-art-explore .explore-morph-btn-svg.is-hovered .char-x  { transition-delay: 0.16s; }
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-p,  .vv-art-explore .explore-morph-btn-svg.is-hovered .char-p  { transition-delay: 0.20s; }
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-l,  .vv-art-explore .explore-morph-btn-svg.is-hovered .char-l  { transition-delay: 0.24s; }
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-o,  .vv-art-explore .explore-morph-btn-svg.is-hovered .char-o  { transition-delay: 0.28s; }
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-r,  .vv-art-explore .explore-morph-btn-svg.is-hovered .char-r  { transition-delay: 0.32s; }
+    .vv-art-explore .explore-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-e2, .vv-art-explore .explore-morph-btn-svg.is-hovered .char-e2 { transition-delay: 0.36s; }
+
+    /* Tactile press response */
+    .vv-art-explore .explore-morph-btn-svg:active .morph-btn-capsule {
+      transform: scale(0.97);
+      transition: transform 0.08s ease;
+    }
+  </style>
+
+<g class="morph-btn-aura">
+<ellipse cx="130" cy="32" fill="url(#expAuraGlow)" filter="url(#expNeonGlow)" rx="114" ry="24"></ellipse>
+</g>
+
+<rect class="morph-btn-capsule" fill="url(#expBtnBgGrad)" height="56" rx="28" ry="28" stroke="#27272a" stroke-width="1.2" width="56" x="102" y="4"></rect>
+
+<rect class="capsule-interior-highlight" fill="url(#expBtnHoverBg)" height="54" opacity="0" pointer-events="none" rx="27" ry="27" width="54" x="103" y="5"></rect>
+
+<g class="sparkle-dot sparkle-dot-1" transform="translate(102, 4)">
+<path d="M 32 26 Q 32 32 26 32 Q 32 32 32 38 Q 32 32 38 32 Q 32 32 32 26 Z" fill="#6ee7b7"></path>
+</g>
+<g class="sparkle-dot sparkle-dot-2" transform="translate(102, 4)">
+<circle cx="32" cy="32" fill="#a7f3d0" r="1.8"></circle>
+</g>
+
+<g class="compass-container-group" transform="translate(98, 0)">
+
+<circle class="compass-bezel-ring" cx="32" cy="32" fill="none" r="18" stroke="#6ee7b7" stroke-width="2.8"></circle>
+<circle cx="32" cy="32" fill="#09090b" opacity="0.6" r="14.2"></circle>
+
+<line opacity="0.8" stroke="#34d399" stroke-linecap="round" stroke-width="1.4" x1="32" x2="32" y1="14.5" y2="16.8"></line>
+<line opacity="0.6" stroke="#059669" stroke-linecap="round" stroke-width="1.2" x1="32" x2="32" y1="47.2" y2="49.5"></line>
+<line opacity="0.6" stroke="#059669" stroke-linecap="round" stroke-width="1.2" x1="14.5" x2="16.8" y1="32" y2="32"></line>
+<line opacity="0.6" stroke="#059669" stroke-linecap="round" stroke-width="1.2" x1="47.2" x2="49.5" y1="32" y2="32"></line>
+
+<g class="compass-needle-pivot">
+
+
+<path class="compass-2d-needle" d="M 32 15 L 42 32 L 32 49 L 22 32 Z M 32 29 A 3 3 0 1 0 32 35 A 3 3 0 1 0 32 29 Z" fill="#ffffff" fill-rule="evenodd"></path>
+
+<circle cx="32" cy="32" fill="#10b981" opacity="0.9" r="1.3"></circle>
+</g>
+</g>
+
+<g class="text-explore-group">
+<text class="char-letter char-e1" x="90" y="32">E</text>
+<text class="char-letter char-x" x="108" y="32">X</text>
+<text class="char-letter char-p" x="126" y="32">P</text>
+<text class="char-letter char-l" x="144" y="32">L</text>
+<text class="char-letter char-o" x="162" y="32">O</text>
+<text class="char-letter char-r" x="180" y="32">R</text>
+<text class="char-letter char-e2" x="198" y="32">E</text>
+</g>
+
+
+</svg>

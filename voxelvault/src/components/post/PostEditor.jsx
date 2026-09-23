@@ -14,7 +14,7 @@ import PostMediaEditor from "./PostMediaEditor";
 import PostAttachmentsEditor from "./PostAttachmentsEditor";
 import PostCredits from "./PostCredits";
 import ExternalDownloadsEditor from "./ExternalDownloadsEditor";
-import { exceedsUploadLimit, formatBytes, safeCreditUrl } from "../../utils/attachments";
+import { exceedsImageLimit, formatBytes, safeCreditUrl } from "../../utils/attachments";
 
 const categories = [
   "architecture",
@@ -41,8 +41,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
   const navigate = useNavigate();
   const { data: personalCategories } = useApi('/me/categories');
   const previewRef = useRef(null);
-  const [previewVersion, setPreviewVersion] = useState(0);
-  useEffect(() => { if (previewVersion) previewRef.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'}); }, [previewVersion]);
+
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [uploadProgress, setUploadProgress] = useState({});
@@ -94,6 +93,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
   }
 
   const [preview, setPreview] = useState(null);
+  useEffect(()=>{if(preview)previewRef.current?.showModal();else previewRef.current?.close();},[preview]);
   const [error, setError] = useState("");
   const [mediaError, setMediaError] = useState("");
 
@@ -237,8 +237,8 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
     for (const file of files) {
       if (!isMounted.current) return;
 
-      if (exceedsUploadLimit(file)) {
-        rejectedNames.push(`${file.name} (over 50 MB)`);
+      if (exceedsImageLimit(file)) {
+        rejectedNames.push(`${file.name} — ${formatBytes(file.size)} (must be under 5 MB)`);
         continue;
       }
 
@@ -301,7 +301,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
 
     setMediaError(
       rejectedNames.length > 0
-        ? `Could not read: ${rejectedNames.join(", ")}`
+        ? `Images not added: ${rejectedNames.join(", ")}`
         : "",
     );
   }
@@ -309,6 +309,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
   function handlePreview(event) {
     event.preventDefault();
 
+    if(draft.gallery.some(image=>image.file&&exceedsImageLimit(image.file))){setError('Remove images of 5 MB or larger before previewing. Existing published images can stay.');return;}
     if (draft.gallery.length === 0) {
       notify('Please add at least one image.', 'error');
       setError("Please add at least one image.");
@@ -339,7 +340,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
 
     setError("");
 
-    setPreviewVersion(value => value + 1);
+
     notify("Your preview is ready. Publish to save your post.", "info", "Preview updated");
     setPreview({
       ...draft,
@@ -396,7 +397,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
 
             {mediaError && (
               <p role="alert" className="text-sm text-red-300">
-                {mediaError}
+                {mediaError}<button type="button" onClick={()=>setMediaError('')} className="ml-3 underline">Dismiss rejected images</button>
               </p>
             )}
 
@@ -525,13 +526,14 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
       </form>
 
       {preview && (
-        <section
-          key={previewVersion}
+        <dialog
           ref={previewRef}
-          style={{scrollMarginTop:180}}
+          onCancel={e=>{if(saving)e.preventDefault();else setPreview(null);}}
+          onClick={e=>{if(e.target===e.currentTarget&&!saving){const r=e.currentTarget.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)setPreview(null);}}}
           aria-labelledby="editor-preview-title"
-          className="vault-preview mt-10 rounded-2xl border border-primary/30 bg-primary/5 p-6 sm:p-8"
+          className="vault-dialog vault-preview !w-[min(1100px,calc(100%-24px))] p-6 sm:p-8"
         >
+          <button autoFocus type="button" aria-label="Close preview" disabled={saving} onClick={()=>setPreview(null)} className="float-right rounded-full border border-white/15 p-2"><Icon name="close"/></button>
           <p role="status" className="text-sm text-primary">
             Preview updated — nothing has been saved.
           </p>
@@ -612,7 +614,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
               {!saving&&<Icon name="upload"/>}{saving ? 'Uploading and saving…' : saveError ? 'Retry save' : isCreating ? 'Publish post' : 'Save changes'}
             </button>
           </div>
-        </section>
+        </dialog>
       )}
       <dialog ref={leaveDialog} className="vault-dialog" onCancel={e=>{e.preventDefault();continueEditing();}}>
         <div className="p-7"><p className="text-xs uppercase tracking-widest text-amber-300">Unfinished post</p><h2 className="mt-3 text-xl">Keep your work?</h2><p className="mt-3 text-sm text-on-surface-variant">Save your content and selected files as a private draft on this browser, or keep editing. Nothing will be published.</p>

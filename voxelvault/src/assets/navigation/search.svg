@@ -1,0 +1,309 @@
+<svg class="expandable-search-svg" id="expandableSearchRightToLeftSvg" viewbox="0 0 520 64" xmlns="http://www.w3.org/2000/svg">
+<defs>
+
+<lineargradient id="searchRtlBaseBg" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#18181b"></stop>
+<stop offset="100%" stop-color="#111113"></stop>
+</lineargradient>
+<lineargradient id="searchRtlActiveBg" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#141f1a"></stop>
+<stop offset="50%" stop-color="#111715"></stop>
+<stop offset="100%" stop-color="#0f1110"></stop>
+</lineargradient>
+<lineargradient id="borderEmeraldGradRtl" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#34d399"></stop>
+<stop offset="50%" stop-color="#10b981"></stop>
+<stop offset="100%" stop-color="#059669"></stop>
+</lineargradient>
+
+<filter height="160%" id="emeraldAuraGlowRtl" width="160%" x="-30%" y="-30%">
+<fegaussianblur result="blur" stddeviation="3.2"></fegaussianblur>
+<femerge>
+<femergenode in="blur"></femergenode>
+<femergenode in="SourceGraphic"></femergenode>
+</femerge>
+</filter>
+<radialgradient cx="50%" cy="50%" id="bloomGlowGradRtl" r="50%">
+<stop offset="0%" stop-color="#10b981" stop-opacity="0.45"></stop>
+<stop offset="70%" stop-color="#059669" stop-opacity="0.12"></stop>
+<stop offset="100%" stop-color="#000000" stop-opacity="0"></stop>
+</radialgradient>
+</defs>
+<style>
+    .vv-art-search .expandable-search-svg {
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overflow: visible;
+      font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Ambient bloom behind the expanding capsule */
+    .vv-art-search .search-glow-aura {
+      opacity: 0;
+      transform-origin: center;
+      transition: opacity 0.52s ease, transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* 
+      Master Capsule:
+      Idle: located at right side: x = 452, width = 56 (occupies 452 to 508, centered at x=480).
+      Hover / Open: expands leftward to x = 12, width = 496 (occupies 12 to 508).
+      Both x and width transition simultaneously with spring easing!
+    */
+    .vv-art-search .search-capsule {
+      x: 452px;
+      y: 4px;
+      width: 56px;
+      height: 56px;
+      rx: 28px;
+      ry: 28px;
+      stroke: #27272a;
+      stroke-width: 1.2;
+      transition: x 0.58s cubic-bezier(0.16, 1, 0.3, 1),
+                  width 0.58s cubic-bezier(0.16, 1, 0.3, 1),
+                  stroke 0.4s ease,
+                  fill 0.4s ease,
+                  filter 0.4s ease;
+    }
+
+    .vv-art-search .search-interior-glow {
+      x: 453px;
+      y: 5px;
+      width: 54px;
+      height: 54px;
+      rx: 27px;
+      ry: 27px;
+      opacity: 0;
+      transition: x 0.58s cubic-bezier(0.16, 1, 0.3, 1),
+                  width 0.58s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.4s ease;
+    }
+
+    /*
+      Search Icon Group (Bezel Ring + Magnifying Glass + Sparkles):
+      Idle: at x = 480, y = 32 (exact center of the 56px button at right).
+      Hover / Open: glides smoothly from right to left to x = 40, y = 32!
+      Distance = 40 - 480 = -440px.
+    */
+    .vv-art-search .search-icon-master-anchor {
+      transform: translate(480px, 32px);
+      transition: transform 0.58s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .vv-art-search .search-bezel-ring {
+      stroke: #6ee7b7;
+      stroke-width: 2.8;
+      transition: stroke 0.4s ease, stroke-width 0.4s ease, opacity 0.35s ease, filter 0.4s ease;
+    }
+
+    .vv-art-search .search-icon-pivot {
+      transform-origin: 0px 0px;
+      transition: transform 0.52s cubic-bezier(0.2, 1.2, 0.3, 1);
+    }
+
+    .vv-art-search .search-icon-lens {
+      stroke: #71717a;
+      stroke-width: 2;
+      transition: stroke 0.35s ease, fill 0.35s ease, filter 0.35s ease;
+    }
+
+    .vv-art-search .search-icon-handle {
+      stroke: #71717a;
+      stroke-width: 2.2;
+      transition: stroke 0.35s ease, filter 0.35s ease;
+    }
+
+    /* Idle subtle breath on icon */
+    @keyframes vv-search-subtleSearchIdleRtl {
+      0%, 100% { transform: scale(1) rotate(0deg); }
+      50% { transform: scale(1.06) rotate(5deg); }
+    }
+
+    .vv-art-search .expandable-search-svg:not(:is(:hover,.is-hovered,.is-open,.is-animating)):not(.is-open) .search-icon-pivot {
+      animation: vv-search-subtleSearchIdleRtl 4.2s ease-in-out infinite;
+    }
+
+    /* Sparkle Particle Accents */
+    .vv-art-search .sparkle-dot {
+      transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+      opacity: 0;
+      transform: scale(0.3);
+    }
+
+    /* 
+      Caret & Placeholder text:
+      Fade in with gentle slide in once the capsule expands leftwards
+    */
+    .vv-art-search .search-body-group {
+      opacity: 0;
+      transform: translateX(20px);
+      transition: opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+
+    .vv-art-search .search-caret-line {
+      opacity: 0;
+      stroke: #10b981;
+      stroke-width: 2;
+      stroke-linecap: round;
+      animation: vv-search-caretPulseRtl 0.9s infinite;
+    }
+
+    @keyframes vv-search-caretPulseRtl {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .vv-art-search .search-placeholder-text {
+      font-size: 15px;
+      font-weight: 400;
+      fill: #71717a;
+      letter-spacing: 0.015em;
+      dominant-baseline: central;
+      opacity: 0;
+      transform: translateX(12px);
+      transition: opacity 0.35s ease, transform 0.48s cubic-bezier(0.16, 1, 0.3, 1), fill 0.3s ease;
+    }
+
+    /* ==============================================================
+       HOVER & EXPANDED STATE (Right to Left glide and expansion)
+       ============================================================== */
+    .vv-art-search .expandable-search-svg:is(:hover,.is-hovered,.is-open,.is-animating) .search-glow-aura,
+    .vv-art-search .expandable-search-svg.is-open .search-glow-aura {
+      opacity: 0.92;
+      transform: scale(1.04);
+    }
+
+    /* Capsule expands leftwards to x=12, width=496 */
+    .vv-art-search .expandable-search-svg:is(:hover,.is-hovered,.is-open,.is-animating) .search-capsule,
+    .vv-art-search .expandable-search-svg.is-open .search-capsule {
+      x: 12px;
+      width: 496px;
+      stroke: url(#borderEmeraldGradRtl);
+      stroke-width: 1.6;
+      filter: drop-shadow(0 0 18px rgba(16, 185, 129, 0.38));
+    }
+
+    .vv-art-search .expandable-search-svg:is(:hover,.is-hovered,.is-open,.is-animating) .search-interior-glow,
+    .vv-art-search .expandable-search-svg.is-open .search-interior-glow {
+      x: 13px;
+      width: 494px;
+      opacity: 1;
+    }
+
+    /* Glides icon from Right (480px) to Left (40px) */
+    .vv-art-search .expandable-search-svg:is(:hover,.is-hovered,.is-open,.is-animating) .search-icon-master-anchor,
+    .vv-art-search .expandable-search-svg.is-open .search-icon-master-anchor {
+      transform: translate(40px, 32px);
+    }
+
+    .vv-art-search .expandable-search-svg:is(:hover,.is-hovered,.is-open,.is-animating) .search-icon-pivot,
+    .vv-art-search .expandable-search-svg.is-open .search-icon-pivot {
+      transform: scale(1.1);
+      animation: none !important;
+    }
+
+    .vv-art-search .expandable-search-svg:is(:hover,.is-hovered,.is-open,.is-animating) .search-icon-lens,
+    .vv-art-search .expandable-search-svg.is-open .search-icon-lens {
+      stroke: #34d399;
+      fill: rgba(52, 211, 153, 0.16);
+      filter: drop-shadow(0 0 5px rgba(52, 211, 153, 0.7));
+    }
+
+    .vv-art-search .expandable-search-svg:is(:hover,.is-hovered,.is-open,.is-animating) .search-icon-handle,
+    .vv-art-search .expandable-search-svg.is-open .search-icon-handle {
+      stroke: #34d399;
+      filter: drop-shadow(0 0 4px rgba(52, 211, 153, 0.6));
+    }
+
+    .vv-art-search .expandable-search-svg:is(:hover,.is-hovered,.is-open,.is-animating) .search-bezel-ring,
+    .vv-art-search .expandable-search-svg.is-open .search-bezel-ring {
+      stroke: #34d399;
+      stroke-width: 3;
+      filter: drop-shadow(0 0 7px rgba(52, 211, 153, 0.65));
+    }
+
+    /* Sparkles blossom when arriving at left */
+    .vv-art-search .expandable-search-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sparkle-dot-1,
+    .vv-art-search .expandable-search-svg.is-open .sparkle-dot-1 {
+      opacity: 1;
+      transform: translate(14px, -12px) scale(1);
+      transition-delay: 0.14s;
+    }
+    .vv-art-search .expandable-search-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sparkle-dot-2,
+    .vv-art-search .expandable-search-svg.is-open .sparkle-dot-2 {
+      opacity: 1;
+      transform: translate(-12px, 12px) scale(0.9);
+      transition-delay: 0.2s;
+    }
+
+    /* Reveal body contents: Caret + Placeholder */
+    .vv-art-search .expandable-search-svg:is(:hover,.is-hovered,.is-open,.is-animating) .search-body-group,
+    .vv-art-search .expandable-search-svg.is-open .search-body-group {
+      opacity: 1;
+      transform: translateX(0px);
+      transition-delay: 0.1s;
+    }
+
+    .vv-art-search .expandable-search-svg:is(:hover,.is-hovered,.is-open,.is-animating) .search-placeholder-text,
+    .vv-art-search .expandable-search-svg.is-open .search-placeholder-text {
+      opacity: 1;
+      fill: #d4d4d8;
+      transform: translateX(0px);
+      transition-delay: 0.16s;
+    }
+
+    .vv-art-search .expandable-search-svg:is(:hover,.is-hovered,.is-open,.is-animating) .search-caret-line,
+    .vv-art-search .expandable-search-svg.is-open .search-caret-line {
+      opacity: 1;
+      transition-delay: 0.18s;
+    }
+
+    /* Micro tactile press */
+    .vv-art-search .expandable-search-svg:active .search-capsule {
+      transform: scale(0.985);
+      transition: transform 0.08s ease;
+    }
+  </style>
+
+<g class="search-glow-aura">
+<ellipse cx="260" cy="32" fill="url(#bloomGlowGradRtl)" filter="url(#emeraldAuraGlowRtl)" rx="248" ry="24"></ellipse>
+</g>
+
+<rect class="search-capsule" fill="url(#searchRtlBaseBg)"></rect>
+<rect class="search-interior-glow" fill="url(#searchRtlActiveBg)" pointer-events="none"></rect>
+
+<g class="search-icon-master-anchor">
+
+<circle class="search-bezel-ring" cx="0" cy="0" fill="none" r="18"></circle>
+<circle cx="0" cy="0" fill="#09090b" opacity="0.6" r="14.2"></circle>
+
+<g class="sparkle-dot sparkle-dot-1">
+<path d="M 0 -5 Q 0 0 -5 0 Q 0 0 0 5 Q 0 0 5 0 Q 0 0 0 -5 Z" fill="#6ee7b7"></path>
+</g>
+<g class="sparkle-dot sparkle-dot-2">
+<circle cx="0" cy="0" fill="#a7f3d0" r="1.5"></circle>
+</g>
+
+<g class="search-icon-pivot">
+<circle class="search-icon-lens" cx="0" cy="0" fill="none" r="7.2"></circle>
+
+<circle cx="-2.5" cy="-2.5" fill="#ffffff" opacity="0.8" r="1.2"></circle>
+
+<line class="search-icon-handle" stroke-linecap="round" x1="5.1" x2="10.8" y1="5.1" y2="10.8"></line>
+</g>
+</g>
+
+<g class="search-body-group">
+
+<line class="search-caret-line" x1="74" x2="74" y1="21" y2="43"></line>
+
+<text class="search-placeholder-text" x="88" y="32">Search worlds, builds, inspiration...</text>
+</g>
+
+
+</svg>

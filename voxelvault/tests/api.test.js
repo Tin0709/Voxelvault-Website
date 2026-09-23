@@ -150,6 +150,9 @@ test('uploads route small private files to Supabase, large files to R2 and rejec
     assert.equal(r2Writes[0].Bucket,'private-test');
     assert.equal(r2Writes[0].ContentLength,5_000_001);
     const count=db.tables.upload_sessions.length;
+    const oversized=await upload('image',Buffer.alloc(5_000_000));
+    assert.equal(oversized.status,400);
+    assert.equal(db.tables.upload_sessions.length,count);
     const invalid=await upload('image',Buffer.from('<html>not an image</html>'));
     assert.equal(invalid.status,400);
     assert.equal(db.tables.upload_sessions.length,count);

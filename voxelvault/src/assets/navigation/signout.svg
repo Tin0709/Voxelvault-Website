@@ -1,0 +1,266 @@
+<svg class="sign-out-morph-svg" id="signOutMorphSvg" viewbox="0 0 200 64" xmlns="http://www.w3.org/2000/svg">
+<defs>
+
+<lineargradient id="signOutBaseBg" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#18181b"></stop>
+<stop offset="100%" stop-color="#111113"></stop>
+</lineargradient>
+<lineargradient id="signOutActiveBg" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#241416"></stop>
+<stop offset="50%" stop-color="#1c1214"></stop>
+<stop offset="100%" stop-color="#140f10"></stop>
+</lineargradient>
+
+<lineargradient id="signOutBorderGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#fb7185"></stop>
+<stop offset="50%" stop-color="#f43f5e"></stop>
+<stop offset="100%" stop-color="#e11d48"></stop>
+</lineargradient>
+
+<filter height="160%" id="signOutGlow" width="160%" x="-30%" y="-30%">
+<fegaussianblur result="blur" stddeviation="3.2"></fegaussianblur>
+<femerge>
+<femergenode in="blur"></femergenode>
+<femergenode in="SourceGraphic"></femergenode>
+</femerge>
+</filter>
+<radialgradient cx="50%" cy="50%" id="signOutBloom" r="50%">
+<stop offset="0%" stop-color="#f43f5e" stop-opacity="0.35"></stop>
+<stop offset="70%" stop-color="#be123c" stop-opacity="0.1"></stop>
+<stop offset="100%" stop-color="#000000" stop-opacity="0"></stop>
+</radialgradient>
+</defs>
+<style>
+    .vv-art-signout .sign-out-morph-svg {
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overflow: visible;
+      font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Ambient bloom behind button */
+    .vv-art-signout .sign-out-glow-aura {
+      opacity: 0;
+      transform-origin: center;
+      transition: opacity 0.5s ease, transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Master capsule:
+       Idle: circle 56px wide at center-left x=4, or pill.
+       In VoxelVault header, Sign out can either start as a compact circle with exit icon (or pill)
+       and expand smoothly into full "Sign out" pill with door-opening exit animation!
+       Let's support the ultra-satisfying kinetic design:
+       At idle: compact 56px circle with a door & arrow icon (or 108px pill matching IMAGE_2).
+       Matching the VoxelVault morph buttons (Explore 42-56px, Create 42-56px, Profile 42-56px):
+       Idle: width = 56px, centered or expanding to 160px with "Sign out" text + opening door!
+    */
+    .vv-art-signout .sign-out-capsule {
+      x: 4px;
+      y: 4px;
+      width: 56px;
+      height: 56px;
+      rx: 28px;
+      ry: 28px;
+      stroke: #27272a;
+      stroke-width: 1.2;
+      transition: width 0.56s cubic-bezier(0.16, 1, 0.3, 1),
+                  stroke 0.4s ease,
+                  fill 0.4s ease,
+                  filter 0.4s ease;
+    }
+
+    .vv-art-signout .sign-out-interior {
+      x: 5px;
+      y: 5px;
+      width: 54px;
+      height: 54px;
+      rx: 27px;
+      ry: 27px;
+      opacity: 0;
+      transition: width 0.56s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.4s ease;
+    }
+
+    /* Outer Bezel Ring centered at (32, 32) */
+    .vv-art-signout .sign-out-bezel {
+      stroke: #71717a;
+      stroke-width: 2.5;
+      transform-origin: 32px 32px;
+      transition: stroke 0.4s ease, stroke-width 0.4s ease, filter 0.4s ease;
+    }
+
+    /* Icon Anchor centered at (32, 32) */
+    .vv-art-signout .sign-out-icon-group {
+      transform: translate(32px, 32px);
+      transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Door arch / bracket */
+    .vv-art-signout .sign-out-door {
+      stroke: #a1a1aa;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: stroke 0.35s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Exit arrow gliding rightwards upon hover */
+    .vv-art-signout .sign-out-arrow {
+      stroke: #a1a1aa;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transform-origin: 0px 0px;
+      transition: stroke 0.35s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), filter 0.35s ease;
+    }
+
+    /* Arrow motion line (particle dash behind arrow) */
+    .vv-art-signout .sign-out-arrow-trail {
+      stroke: #fb7185;
+      stroke-dasharray: 6 12;
+      stroke-dashoffset: 12;
+      opacity: 0;
+      transition: stroke-dashoffset 0.5s ease, opacity 0.4s ease;
+    }
+
+    /* Text Reveal */
+    .vv-art-signout .sign-out-label-group {
+      opacity: 0;
+      transform: translateX(-10px);
+      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+
+    .vv-art-signout .sign-out-text {
+      font-size: 15px;
+      font-weight: 600;
+      fill: #e4e4e7;
+      letter-spacing: 0.02em;
+      dominant-baseline: central;
+      transition: fill 0.35s ease;
+    }
+
+    /* Warning micro dot accent */
+    .vv-art-signout .sign-out-dot {
+      fill: #f43f5e;
+      opacity: 0;
+      transform: scale(0.2);
+      transform-origin: 172px 32px;
+      transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+    }
+
+    /* ==============================================================
+       HOVER & EXPANDED STATE
+       ============================================================== */
+    .vv-art-signout .sign-out-morph-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sign-out-glow-aura,
+    .vv-art-signout .sign-out-morph-svg.is-open .sign-out-glow-aura {
+      opacity: 0.95;
+      transform: scale(1.05);
+    }
+
+    .vv-art-signout .sign-out-morph-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sign-out-capsule,
+    .vv-art-signout .sign-out-morph-svg.is-open .sign-out-capsule {
+      width: 188px;
+      stroke: url(#signOutBorderGrad);
+      stroke-width: 1.6;
+      filter: drop-shadow(0 0 16px rgba(244, 63, 94, 0.35));
+    }
+
+    .vv-art-signout .sign-out-morph-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sign-out-interior,
+    .vv-art-signout .sign-out-morph-svg.is-open .sign-out-interior {
+      width: 186px;
+      opacity: 1;
+    }
+
+    .vv-art-signout .sign-out-morph-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sign-out-bezel,
+    .vv-art-signout .sign-out-morph-svg.is-open .sign-out-bezel {
+      stroke: #fb7185;
+      stroke-width: 2.8;
+      filter: drop-shadow(0 0 6px rgba(251, 113, 133, 0.6));
+    }
+
+    .vv-art-signout .sign-out-morph-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sign-out-door,
+    .vv-art-signout .sign-out-morph-svg.is-open .sign-out-door {
+      stroke: #f43f5e;
+      transform: scale(0.96);
+    }
+
+    /* Kinetic Door Opening & Arrow Sliding Through Door */
+    .vv-art-signout .sign-out-morph-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sign-out-arrow,
+    .vv-art-signout .sign-out-morph-svg.is-open .sign-out-arrow {
+      stroke: #fb7185;
+      transform: translateX(4.5px);
+      filter: drop-shadow(0 0 4px rgba(251, 113, 133, 0.7));
+    }
+
+    .vv-art-signout .sign-out-morph-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sign-out-arrow-trail,
+    .vv-art-signout .sign-out-morph-svg.is-open .sign-out-arrow-trail {
+      opacity: 0.8;
+      stroke-dashoffset: 0;
+    }
+
+    /* Reveal "Sign out" Label */
+    .vv-art-signout .sign-out-morph-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sign-out-label-group,
+    .vv-art-signout .sign-out-morph-svg.is-open .sign-out-label-group {
+      opacity: 1;
+      transform: translateX(0px);
+      transition-delay: 0.08s;
+    }
+
+    .vv-art-signout .sign-out-morph-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sign-out-text,
+    .vv-art-signout .sign-out-morph-svg.is-open .sign-out-text {
+      fill: #ffffff;
+    }
+
+    .vv-art-signout .sign-out-morph-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sign-out-dot,
+    .vv-art-signout .sign-out-morph-svg.is-open .sign-out-dot {
+      opacity: 1;
+      transform: scale(1);
+      transition-delay: 0.16s;
+    }
+
+    /* Tactile Press Active State */
+    .vv-art-signout .sign-out-morph-svg:active .sign-out-capsule {
+      transform: scale(0.98);
+      transition: transform 0.08s ease;
+    }
+  </style>
+
+<g class="sign-out-glow-aura">
+<ellipse cx="98" cy="32" fill="url(#signOutBloom)" filter="url(#signOutGlow)" rx="90" ry="22"></ellipse>
+</g>
+
+<rect class="sign-out-capsule" fill="url(#signOutBaseBg)"></rect>
+<rect class="sign-out-interior" fill="url(#signOutActiveBg)" pointer-events="none"></rect>
+
+<g class="sign-out-icon-group">
+
+<circle class="sign-out-bezel" cx="0" cy="0" fill="none" r="17"></circle>
+<circle cx="0" cy="0" fill="#09090b" opacity="0.65" r="13.5"></circle>
+
+
+<path class="sign-out-door" d="M 0 -8.5 L -5.5 -8.5 C -7 -8.5 -8 -7.5 -8 -6 L -8 6 C -8 7.5 -7 8.5 -5.5 8.5 L 0 8.5" fill="none"></path>
+
+<g class="sign-out-arrow">
+
+<line x1="-3.5" x2="6.8" y1="0" y2="0"></line>
+
+<path d="M 3.2 -3.8 L 7.2 0 L 3.2 3.8" fill="none"></path>
+
+<line class="sign-out-arrow-trail" stroke-width="1.8" x1="-7" x2="-2" y1="0" y2="0"></line>
+</g>
+</g>
+
+<g class="sign-out-label-group">
+<text class="sign-out-text" x="62" y="32">Sign out</text>
+
+<circle class="sign-out-dot" cx="152" cy="32" r="3.2"></circle>
+<circle class="sign-out-dot" cx="152" cy="32" fill="#f43f5e" opacity="0.25" r="6"></circle>
+</g>
+
+
+</svg>

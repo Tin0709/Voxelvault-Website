@@ -62,7 +62,7 @@ function PostMediaEditor({ images, onChange, onAddFiles }) {
       <FileDropZone
         label="Add images"
         prompt="Drag and drop images here"
-        hint="JPG, PNG, WebP, AVIF or GIF. Up to 50 MB per image. Drop multiple images or choose files. Local preview only."
+        hint="JPG, PNG, WebP, AVIF or GIF. Under 5 MB per image (5,000,000 bytes). Drop multiple images or choose files. Local preview only."
         accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
         onFiles={onAddFiles}
       />

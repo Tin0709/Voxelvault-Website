@@ -1,0 +1,281 @@
+<svg class="profile-morph-btn-svg" id="profileMorphBtnSvg" viewbox="0 0 240 64" xmlns="http://www.w3.org/2000/svg">
+<defs>
+
+<lineargradient id="prfBtnBgGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#18181b"></stop>
+<stop offset="100%" stop-color="#111113"></stop>
+</lineargradient>
+<lineargradient id="prfBtnHoverBg" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#064e3b" stop-opacity="0.45"></stop>
+<stop offset="50%" stop-color="#047857" stop-opacity="0.22"></stop>
+<stop offset="100%" stop-color="#022c22" stop-opacity="0.5"></stop>
+</lineargradient>
+<lineargradient id="prfBorderGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#34d399"></stop>
+<stop offset="50%" stop-color="#10b981"></stop>
+<stop offset="100%" stop-color="#059669"></stop>
+</lineargradient>
+<lineargradient id="prfAvatarGlowGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#ffffff"></stop>
+<stop offset="40%" stop-color="#a7f3d0"></stop>
+<stop offset="100%" stop-color="#34d399"></stop>
+</lineargradient>
+
+<filter height="160%" id="prfNeonGlow" width="160%" x="-30%" y="-30%">
+<fegaussianblur result="blur" stddeviation="3.2"></fegaussianblur>
+<femerge>
+<femergenode in="blur"></femergenode>
+<femergenode in="SourceGraphic"></femergenode>
+</femerge>
+</filter>
+<radialgradient cx="50%" cy="50%" id="prfAuraGlow" r="50%">
+<stop offset="0%" stop-color="#10b981" stop-opacity="0.45"></stop>
+<stop offset="70%" stop-color="#059669" stop-opacity="0.12"></stop>
+<stop offset="100%" stop-color="#000000" stop-opacity="0"></stop>
+</radialgradient>
+</defs>
+<style>
+    .vv-art-profile .profile-morph-btn-svg {
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overflow: visible;
+      font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Master capsule container */
+    .vv-art-profile .morph-btn-capsule {
+      transform-origin: center;
+      transition: width 0.52s cubic-bezier(0.16, 1, 0.3, 1),
+                  x 0.52s cubic-bezier(0.16, 1, 0.3, 1),
+                  stroke 0.4s ease,
+                  fill 0.4s ease,
+                  filter 0.4s ease;
+      rx: 28px;
+      ry: 28px;
+    }
+
+    .vv-art-profile .capsule-interior-highlight {
+      transition: width 0.52s cubic-bezier(0.16, 1, 0.3, 1),
+                  x 0.52s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.4s ease;
+      rx: 27px;
+      ry: 27px;
+    }
+
+    /* Outer ambient bloom */
+    .vv-art-profile .morph-btn-aura {
+      transition: opacity 0.45s ease, transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+      transform-origin: center;
+      opacity: 0;
+    }
+
+    /* User 2D Icon master container */
+    .vv-art-profile .user-icon-container {
+      transform-origin: 32px 32px;
+      transition: transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .vv-art-profile .user-bezel-ring {
+      transition: stroke 0.4s ease, stroke-width 0.4s ease, filter 0.4s ease;
+      transform-origin: 32px 32px;
+    }
+
+    .vv-art-profile .user-avatar-pivot {
+      transform-origin: 32px 32px;
+      transition: transform 0.65s cubic-bezier(0.22, 1.25, 0.36, 1);
+      will-change: transform;
+    }
+
+    .vv-art-profile .user-head-shape, .vv-art-profile .user-body-shape {
+      transition: stroke 0.4s ease, fill 0.4s ease, filter 0.4s ease;
+    }
+
+    /* Idle gentle breathing pulse on user icon */
+    @keyframes vv-profile-subtleUserIdle {
+      0%, 100% { transform: translateY(0px) scale(1); }
+      50% { transform: translateY(-1.5px) scale(1.04); }
+    }
+
+    .vv-art-profile .profile-morph-btn-svg:not(:is(:hover,.is-hovered,.is-open,.is-animating)):not(.is-hovered) .user-avatar-pivot {
+      animation: vv-profile-subtleUserIdle 4.2s ease-in-out infinite;
+    }
+
+    /* Sparkle Particle Accents */
+    .vv-art-profile .sparkle-dot {
+      transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+      transform-origin: 32px 32px;
+      opacity: 0;
+      transform: scale(0.3);
+    }
+
+    /* Typography "PROFILE" Group & individual letters */
+    .vv-art-profile .text-profile-group {
+      pointer-events: none;
+    }
+
+    .vv-art-profile .char-letter {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(7px) scale(0.88);
+      transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.35s ease,
+                  fill 0.3s ease;
+      fill: #ffffff;
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: 0.12em;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+
+    /* ==============================================================
+       HOVER STATE INTERACTION (.profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating))
+       - Capsule morphs: 56px circle -> 216px pill (centered)
+       - User icon shifts left to x=12
+       - Avatar head & shoulder scale dynamically with playful spring settle
+       - Bezel illuminates in emerald neon
+       - "PROFILE" letters cascade sequentially in the center!
+       ============================================================== */
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .morph-btn-capsule,
+    .vv-art-profile .profile-morph-btn-svg.is-hovered .morph-btn-capsule {
+      x: 12px;
+      width: 216px;
+      stroke: url(#prfBorderGrad);
+      stroke-width: 1.6;
+      filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.45));
+    }
+
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .capsule-interior-highlight,
+    .vv-art-profile .profile-morph-btn-svg.is-hovered .capsule-interior-highlight {
+      x: 13px;
+      width: 214px;
+      opacity: 1;
+    }
+
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .morph-btn-aura,
+    .vv-art-profile .profile-morph-btn-svg.is-hovered .morph-btn-aura {
+      opacity: 0.92;
+      transform: scale(1.08);
+    }
+
+    /* User icon container shifts to left position smoothly */
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .user-icon-container,
+    .vv-art-profile .profile-morph-btn-svg.is-hovered .user-icon-container {
+      transform: translate(12px, 0);
+    }
+
+    /* Bezel neon ring on hover */
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .user-bezel-ring,
+    .vv-art-profile .profile-morph-btn-svg.is-hovered .user-bezel-ring {
+      stroke: #34d399;
+      stroke-width: 3.2;
+      filter: drop-shadow(0 0 6px rgba(52, 211, 153, 0.65));
+    }
+
+    /* Dynamic kinetic spring on user silhouette */
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .user-avatar-pivot,
+    .vv-art-profile .profile-morph-btn-svg.is-hovered .user-avatar-pivot {
+      transform: scale(1.1) translateY(-1px);
+      animation: none !important;
+    }
+
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .user-head-shape,
+    .vv-art-profile .profile-morph-btn-svg.is-hovered .user-head-shape {
+      stroke: #ffffff;
+      fill: #10b981;
+      filter: drop-shadow(0 0 4px rgba(52, 211, 153, 0.8));
+    }
+
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .user-body-shape,
+    .vv-art-profile .profile-morph-btn-svg.is-hovered .user-body-shape {
+      stroke: #ffffff;
+      stroke-width: 2.6;
+      filter: drop-shadow(0 0 4px rgba(52, 211, 153, 0.6));
+    }
+
+    /* Sparkles */
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sparkle-dot-1,
+    .vv-art-profile .profile-morph-btn-svg.is-hovered .sparkle-dot-1 {
+      opacity: 1;
+      transform: translate(16px, -14px) scale(1.1);
+      transition-delay: 0.12s;
+    }
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sparkle-dot-2,
+    .vv-art-profile .profile-morph-btn-svg.is-hovered .sparkle-dot-2 {
+      opacity: 1;
+      transform: translate(-14px, 14px) scale(0.9);
+      transition-delay: 0.18s;
+    }
+
+    /* Cascading Sequential Text Reveal for "PROFILE" */
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-letter,
+    .vv-art-profile .profile-morph-btn-svg.is-hovered .char-letter {
+      opacity: 1;
+      transform: translateY(0px) scale(1);
+    }
+
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-p, .vv-art-profile .profile-morph-btn-svg.is-hovered .char-p { transition-delay: 0.10s; }
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-r, .vv-art-profile .profile-morph-btn-svg.is-hovered .char-r { transition-delay: 0.14s; }
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-o, .vv-art-profile .profile-morph-btn-svg.is-hovered .char-o { transition-delay: 0.18s; }
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-f, .vv-art-profile .profile-morph-btn-svg.is-hovered .char-f { transition-delay: 0.22s; }
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-i, .vv-art-profile .profile-morph-btn-svg.is-hovered .char-i { transition-delay: 0.26s; }
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-l, .vv-art-profile .profile-morph-btn-svg.is-hovered .char-l { transition-delay: 0.30s; }
+    .vv-art-profile .profile-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-e, .vv-art-profile .profile-morph-btn-svg.is-hovered .char-e { transition-delay: 0.34s; }
+
+    /* Tactile press response */
+    .vv-art-profile .profile-morph-btn-svg:active .morph-btn-capsule {
+      transform: scale(0.97);
+      transition: transform 0.08s ease;
+    }
+  .vv-art-profile .user-icon-container{transform:translate(88px,0);transition:transform .52s cubic-bezier(.16,1,.3,1)} .vv-art-profile:is(:is(:hover,.is-hovered,.is-open,.is-animating),.vv-playing,:focus-within) .user-icon-container{transform:translate(12px,0)}</style>
+
+<g class="morph-btn-aura">
+<ellipse cx="120" cy="32" fill="url(#prfAuraGlow)" filter="url(#prfNeonGlow)" rx="108" ry="24"></ellipse>
+</g>
+
+<rect class="morph-btn-capsule" fill="url(#prfBtnBgGrad)" height="56" rx="28" ry="28" stroke="#27272a" stroke-width="1.2" width="56" x="92" y="4"></rect>
+
+<rect class="capsule-interior-highlight" fill="url(#prfBtnHoverBg)" height="54" opacity="0" pointer-events="none" rx="27" ry="27" width="54" x="93" y="5"></rect>
+
+<g class="sparkle-dot sparkle-dot-1" transform="translate(92, 4)">
+<path d="M 32 26 Q 32 32 26 32 Q 32 32 32 38 Q 32 32 38 32 Q 32 32 32 26 Z" fill="#6ee7b7"></path>
+</g>
+<g class="sparkle-dot sparkle-dot-2" transform="translate(92, 4)">
+<circle cx="32" cy="32" fill="#a7f3d0" r="1.8"></circle>
+</g>
+
+<g class="user-icon-container" transform="translate(88, 0)">
+
+<circle class="user-bezel-ring" cx="32" cy="32" fill="none" r="18" stroke="#6ee7b7" stroke-width="2.8"></circle>
+<circle cx="32" cy="32" fill="#09090b" opacity="0.6" r="14.2"></circle>
+
+<line opacity="0.8" stroke="#34d399" stroke-linecap="round" stroke-width="1.4" x1="32" x2="32" y1="14.5" y2="16.8"></line>
+<line opacity="0.6" stroke="#059669" stroke-linecap="round" stroke-width="1.2" x1="32" x2="32" y1="47.2" y2="49.5"></line>
+<line opacity="0.6" stroke="#059669" stroke-linecap="round" stroke-width="1.2" x1="14.5" x2="16.8" y1="32" y2="32"></line>
+<line opacity="0.6" stroke="#059669" stroke-linecap="round" stroke-width="1.2" x1="47.2" x2="49.5" y1="32" y2="32"></line>
+
+<g class="user-avatar-pivot">
+
+<circle class="user-head-shape" cx="32" cy="27" fill="#09090b" r="5.2" stroke="#ecfdf5" stroke-width="2.2"></circle>
+
+<path class="user-body-shape" d="M 22.8 41.5 C 23.5 35.8 27.2 34.2 32 34.2 C 36.8 34.2 40.5 35.8 41.2 41.5" fill="none" stroke="#ecfdf5" stroke-linecap="round" stroke-width="2.2"></path>
+
+<circle cx="32" cy="27" fill="#34d399" opacity="0.9" r="1.3"></circle>
+</g>
+</g>
+
+<g class="text-profile-group">
+<text class="char-letter char-p" x="84" y="32">P</text>
+<text class="char-letter char-r" x="101" y="32">R</text>
+<text class="char-letter char-o" x="118" y="32">O</text>
+<text class="char-letter char-f" x="135" y="32">F</text>
+<text class="char-letter char-i" x="150" y="32">I</text>
+<text class="char-letter char-l" x="164" y="32">L</text>
+<text class="char-letter char-e" x="180" y="32">E</text>
+</g>
+
+
+</svg>

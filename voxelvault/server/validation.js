@@ -9,6 +9,7 @@ export function storageFor(kind, size) {
   if (!['image', 'attachment'].includes(kind) || !Number.isSafeInteger(size) || size < 0 || size > MAX_BYTES) {
     throw Object.assign(new Error('Files must be at most 50 MB'), { status: 400 });
   }
+  if (kind === 'image' && size >= SMALL_BYTES) throw Object.assign(new Error('Images must be smaller than 5 MB'), {status:400});
   return kind === 'image' || size <= SMALL_BYTES ? 'supabase' : 'r2';
 }
 export function httpUrl(value) {

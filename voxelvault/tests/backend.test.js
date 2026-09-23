@@ -9,7 +9,8 @@ test('storage thresholds and untrusted request validation', () => {
   assert.equal(storageFor('attachment',5_000_000),'supabase');
   assert.equal(storageFor('attachment',5_000_001),'r2');
   assert.equal(storageFor('attachment',50_000_000),'r2');
-  assert.equal(storageFor('image',50_000_000),'supabase');
+  assert.equal(storageFor('image',4_999_999),'supabase');
+  for(const size of [5_000_000,5_000_001,50_000_000]) assert.throws(()=>storageFor('image',size),/smaller than 5 MB/);
   for (const size of [-1,NaN,1.5,50_000_001]) assert.throws(()=>storageFor('attachment',size));
   assert.throws(()=>storageFor('other',1));
   const body = {title:' Test ',category:'art',version:0,images:[{id:randomUUID()}],attachments:[],externalDownloads:[]};

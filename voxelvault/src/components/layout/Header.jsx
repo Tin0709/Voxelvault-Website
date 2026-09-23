@@ -1,50 +1,45 @@
-import { NavLink, useLocation } from 'react-router';
+import { useLocation } from 'react-router';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import Brand from '../ui/Brand';
+import AnimatedNav from '../ui/AnimatedNav';
+import AnimatedArtwork from '../ui/AnimatedArtwork';
+function SearchField({mobile,searchQuery,onSearchChange,close}){
+ const [active,setActive]=useState(false);const [focused,setFocused]=useState(false);const [query,setQuery]=useState(searchQuery);
+ const submit=()=>{onSearchChange(query);close();};
+ return <div role="search" onPointerEnter={()=>setActive(true)} onPointerLeave={()=>setActive(false)} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} className={`vv-search ${mobile?'vv-search-mobile':''}`}>
+  <AnimatedArtwork name="search" active={active||focused||Boolean(searchQuery)||mobile}/>
+  <label className="sr-only" htmlFor={mobile?'mobile-search':'creation-search'}>Search creations</label>
+  <input id={mobile?'mobile-search':'creation-search'} type="search" enterKeyHint="search" value={mobile?query:searchQuery} onChange={e=>mobile?setQuery(e.target.value):onSearchChange(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){if(mobile)submit();else close();}}} placeholder="Search worlds, builds…"/>
+  {mobile&&<button type="button" aria-label="Search" onClick={submit} className="absolute right-2 top-2 h-8 w-8 rounded-full bg-primary/10 text-primary">↗</button>}
+ </div>;
+}
+import Icon from '../ui/Icon';
 import { notify } from '../../lib/notifications';
-
-export default function Header({ searchQuery, onSearchChange }) {
-  const { user, signOut } = useAuth();
-  const location = useLocation();
-  const [openAt,setOpenAt]=useState(null);
-  const [busy,setBusy]=useState(false);
-  const open = openAt === location.key;
-  const drawer=useRef(null);
-  useEffect(()=>{if(open)drawer.current?.showModal();else drawer.current?.close();},[open]);
-  const navClass=({isActive})=>`rounded-full px-4 py-2.5 text-sm transition ${isActive?'bg-primary/10 text-primary':'text-on-surface-variant hover:bg-white/5 hover:text-primary'}`;
-  async function logout() {
-    const event=new CustomEvent('vault:before-signout',{cancelable:true,detail:{proceed:performLogout}});
-    if(!window.dispatchEvent(event))return;
-    await performLogout();
-  }
-  async function performLogout() {
-    setBusy(true);
-    try { await signOut();setOpenAt(null);notify('You have signed out.'); }
-    catch(error) {notify(error.message,'error');} finally {setBusy(false);}
-  }
-  const navigation=<>
-        <NavLink to="/" end className={navClass} onClick={()=>setOpenAt(null)}>Explore</NavLink>
-        <NavLink to="/my-posts" className={navClass} onClick={()=>setOpenAt(null)}>My Posts</NavLink>
-        <NavLink to="/create" onClick={()=>setOpenAt(null)} className="vault-action rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-on-primary">+ Create</NavLink>
-        {user && <NavLink to="/profile" className={navClass} onClick={()=>setOpenAt(null)}>Profile</NavLink>}
-        {user ? <button type="button" disabled={busy} onClick={logout} className="rounded-full border border-white/15 px-4 py-2.5 text-sm disabled:opacity-50">{busy?'Signing out…':'Sign out'}</button> : <NavLink to="/login" className={navClass} onClick={()=>setOpenAt(null)}>Sign in</NavLink>}
-  </>;
-  return <header className="sticky top-0 z-50 border-b border-white/10 bg-background/95 backdrop-blur-xl" onKeyDown={e=>{if(e.key==='Escape'){setOpenAt(null);document.getElementById('navigation-toggle')?.focus();}}}>
-    <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-10">
-      <Brand />
-      <button id="navigation-toggle" type="button" aria-expanded={open} aria-controls="main-navigation" aria-label={open?'Close navigation':'Open navigation'} onClick={()=>setOpenAt(open?null:location.key)} className="ml-auto flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 text-primary xl:hidden">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d={open?'M6 6l12 12M6 18L18 6':'M4 6h16M4 12h16M4 18h16'} /></svg>
-      </button>
-      <div role="search" className="order-3 w-full min-w-0 xl:order-2 xl:ml-auto xl:w-auto xl:max-w-md xl:flex-1">
-        <label htmlFor="creation-search" className="sr-only">Search creations</label>
-        <div className="relative"><span aria-hidden="true" className="absolute left-4 top-3 text-on-surface-variant">⌕</span><input id="creation-search" type="search" value={searchQuery} onChange={e=>{setOpenAt(null);onSearchChange(e.target.value);}} placeholder="Search worlds, builds, inspiration…" className="w-full rounded-full border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
-      </div>
-      <nav aria-label="Main navigation" className="order-1 ml-3 hidden items-center gap-2 xl:flex">{navigation}</nav>
-      <dialog ref={drawer} id="main-navigation" className="vault-drawer" onCancel={e=>{e.preventDefault();setOpenAt(null);}} onClick={e=>{if(e.target===e.currentTarget){const rect=e.currentTarget.getBoundingClientRect();if(e.clientX<rect.left)setOpenAt(null);}}}>
-        <div className="mb-8 flex items-center justify-between"><span className="text-xs uppercase tracking-widest text-primary">Your vault</span><button type="button" aria-label="Close navigation" onClick={()=>setOpenAt(null)} className="rounded-full border border-white/10 px-4 py-2">×</button></div>
-        <Brand onNavigate={()=>setOpenAt(null)}/><nav aria-label="Mobile navigation" className="mt-8 flex flex-col items-stretch gap-3">{navigation}</nav>
-      </dialog>
-    </div>
-  </header>;
+export default function Header({searchQuery,onSearchChange}){
+ const {user,signOut}=useAuth();const location=useLocation();const [openAt,setOpenAt]=useState(null);const [busy,setBusy]=useState(false);const drawer=useRef(null);const open=openAt===location.key;
+ useEffect(()=>{if(open)drawer.current?.showModal();else drawer.current?.close();},[open]);
+ async function performLogout(){setBusy(true);try{await signOut();setOpenAt(null);notify('You have signed out.');}catch(error){notify(error.message,'error');}finally{setBusy(false);}}
+ async function logout(){const event=new CustomEvent('vault:before-signout',{cancelable:true,detail:{proceed:performLogout}});if(window.dispatchEvent(event))await performLogout();}
+ const close=()=>setOpenAt(null);
+ const nav=(mobile=false)=><>
+  {mobile&&<AnimatedNav mobile name="explore" label="Explore" description="Discover worlds & creations" to="/" onNavigate={close}/>}
+  <AnimatedNav mobile={mobile} name="create" label="Create" description="Share a new creation" to="/create" onNavigate={close}/>
+  {user&&<AnimatedNav mobile={mobile} name="profile" label="Profile" description="Your profile, posts & storage" to="/profile" onNavigate={close}/>}
+  {user?<AnimatedNav mobile={mobile} name="signout" label={busy?'Signing out…':'Sign out'} description="Leave your account securely" onAction={logout} disabled={busy}/>:<AnimatedNav mobile={mobile} name="signup" label="Sign up" description="Join the creative community" to="/register" onNavigate={close}/>}
+ </>;
+ const search=(mobile=false)=><SearchField mobile={mobile} searchQuery={searchQuery} onSearchChange={onSearchChange} close={close}/>;
+ return <header className="sticky top-0 z-50 border-b border-white/10 bg-background/95 backdrop-blur-xl">
+  <div className="mx-auto flex max-w-[1600px] items-center gap-2 px-4 py-3 sm:px-6 lg:px-8">
+   <Brand/><div className="hidden xl:block"><AnimatedNav name="explore" label="Explore" to="/"/></div>
+   <nav aria-label="Main navigation" className="ml-auto hidden min-w-0 items-center gap-1 xl:flex">{search()}{nav()}</nav>
+   <button id="navigation-toggle" type="button" aria-expanded={open} aria-controls="main-navigation" aria-label="Open navigation" onClick={()=>setOpenAt(location.key)} className="ml-auto flex h-11 w-11 items-center justify-center rounded-xl border border-primary/25 text-primary xl:hidden"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+   <dialog ref={drawer} id="main-navigation" aria-label="Your vault navigation" className="vault-drawer vv-mobile-menu" onCancel={close} onClick={e=>{if(e.target===e.currentTarget){const r=e.currentTarget.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right)close();}}}>
+    {open&&<><div className="mb-5 flex items-center justify-between"><span className="text-xs uppercase tracking-[.2em] text-primary">● Your vault</span><button type="button" aria-label="Close navigation" onClick={close} className="rounded-full border border-white/10 p-3"><Icon name="close"/></button></div>
+    <Brand onNavigate={close}/><p className="mb-6 ml-3 font-mono text-[10px] uppercase tracking-[.2em] text-on-surface-variant">Your creative archive</p>{search(true)}
+    <nav aria-label="Mobile navigation" className="mt-6 flex flex-col gap-3">{nav(true)}</nav>
+    <p className="mt-8 border-t border-white/10 pt-5 text-xs text-on-surface-variant">A home for extraordinary worlds.</p></>}
+   </dialog>
+  </div>
+ </header>;
 }

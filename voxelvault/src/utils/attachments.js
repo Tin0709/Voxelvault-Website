@@ -35,3 +35,6 @@ export const MAX_UPLOAD_BYTES = 50_000_000;
 export function exceedsUploadLimit(file) {
   return file.size > MAX_UPLOAD_BYTES;
 }
+
+export const MAX_IMAGE_BYTES = 5_000_000;
+export function exceedsImageLimit(file) { return file.size >= MAX_IMAGE_BYTES; }

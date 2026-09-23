@@ -1,0 +1,265 @@
+<svg class="create-morph-btn-svg" id="createMorphBtnSvg" viewbox="0 0 240 64" xmlns="http://www.w3.org/2000/svg">
+<defs>
+
+<lineargradient id="crtBtnBgGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#18181b"></stop>
+<stop offset="100%" stop-color="#111113"></stop>
+</lineargradient>
+<lineargradient id="crtBtnHoverBg" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#064e3b" stop-opacity="0.45"></stop>
+<stop offset="50%" stop-color="#047857" stop-opacity="0.22"></stop>
+<stop offset="100%" stop-color="#022c22" stop-opacity="0.5"></stop>
+</lineargradient>
+<lineargradient id="crtBorderGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#34d399"></stop>
+<stop offset="50%" stop-color="#10b981"></stop>
+<stop offset="100%" stop-color="#059669"></stop>
+</lineargradient>
+<lineargradient id="crtPlusCrossGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#ffffff"></stop>
+<stop offset="40%" stop-color="#a7f3d0"></stop>
+<stop offset="100%" stop-color="#34d399"></stop>
+</lineargradient>
+
+<filter height="160%" id="crtNeonGlow" width="160%" x="-30%" y="-30%">
+<fegaussianblur result="blur" stddeviation="3.2"></fegaussianblur>
+<femerge>
+<femergenode in="blur"></femergenode>
+<femergenode in="SourceGraphic"></femergenode>
+</femerge>
+</filter>
+<radialgradient cx="50%" cy="50%" id="crtAuraGlow" r="50%">
+<stop offset="0%" stop-color="#10b981" stop-opacity="0.45"></stop>
+<stop offset="70%" stop-color="#059669" stop-opacity="0.12"></stop>
+<stop offset="100%" stop-color="#000000" stop-opacity="0"></stop>
+</radialgradient>
+</defs>
+<style>
+    .vv-art-create .create-morph-btn-svg {
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overflow: visible;
+      font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Master capsule container */
+    .vv-art-create .morph-btn-capsule {
+      transform-origin: center;
+      transition: width 0.52s cubic-bezier(0.16, 1, 0.3, 1),
+                  x 0.52s cubic-bezier(0.16, 1, 0.3, 1),
+                  stroke 0.4s ease,
+                  fill 0.4s ease,
+                  filter 0.4s ease;
+      rx: 28px;
+      ry: 28px;
+    }
+
+    .vv-art-create .capsule-interior-highlight {
+      transition: width 0.52s cubic-bezier(0.16, 1, 0.3, 1),
+                  x 0.52s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.4s ease;
+      rx: 27px;
+      ry: 27px;
+    }
+
+    /* Outer ambient bloom */
+    .vv-art-create .morph-btn-aura {
+      transition: opacity 0.45s ease, transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+      transform-origin: center;
+      opacity: 0;
+    }
+
+    /* Plus icon master container */
+    .vv-art-create .plus-icon-container {
+      transform-origin: 32px 32px;
+      transition: transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .vv-art-create .plus-bezel-ring {
+      transition: stroke 0.4s ease, stroke-width 0.4s ease, filter 0.4s ease;
+      transform-origin: 32px 32px;
+    }
+
+    .vv-art-create .plus-cross-pivot {
+      transform-origin: 32px 32px;
+      transition: transform 0.7s cubic-bezier(0.22, 1.25, 0.36, 1);
+      will-change: transform;
+    }
+
+    /* Idle gentle breathing pulse on plus icon */
+    @keyframes vv-create-subtlePlusIdle {
+      0%, 100% { transform: scale(1) rotate(0deg); }
+      50% { transform: scale(1.06) rotate(4deg); }
+    }
+
+    .vv-art-create .create-morph-btn-svg:not(:is(:hover,.is-hovered,.is-open,.is-animating)):not(.is-hovered) .plus-cross-pivot {
+      animation: vv-create-subtlePlusIdle 4.2s ease-in-out infinite;
+    }
+
+    /* Sparkle Particle Accents */
+    .vv-art-create .sparkle-dot {
+      transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+      transform-origin: 32px 32px;
+      opacity: 0;
+      transform: scale(0.3);
+    }
+
+    /* Typography "CREATE" Group & individual letters */
+    .vv-art-create .text-create-group {
+      pointer-events: none;
+    }
+
+    .vv-art-create .char-letter {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(7px) scale(0.88);
+      transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.35s ease,
+                  fill 0.3s ease;
+      fill: #ffffff;
+      font-weight: 700;
+      font-size: 19px;
+      letter-spacing: 0.14em;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+
+    /* ==============================================================
+       HOVER STATE INTERACTION (.create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating))
+       - Capsule morphs: 56px circle -> 208px pill (centered)
+       - Plus icon shifts left to x=12
+       - Plus cross rotates dynamic 450deg (360 + 90) or 405deg with spring settle
+       - Bezel illuminates in emerald neon
+       - "CREATE" letters cascade sequentially in the center!
+       ============================================================== */
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .morph-btn-capsule,
+    .vv-art-create .create-morph-btn-svg.is-hovered .morph-btn-capsule {
+      x: 16px;
+      width: 208px;
+      stroke: url(#crtBorderGrad);
+      stroke-width: 1.6;
+      filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.45));
+    }
+
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .capsule-interior-highlight,
+    .vv-art-create .create-morph-btn-svg.is-hovered .capsule-interior-highlight {
+      x: 17px;
+      width: 206px;
+      opacity: 1;
+    }
+
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .morph-btn-aura,
+    .vv-art-create .create-morph-btn-svg.is-hovered .morph-btn-aura {
+      opacity: 0.92;
+      transform: scale(1.08);
+    }
+
+    /* Plus container shifts to left position smoothly */
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .plus-icon-container,
+    .vv-art-create .create-morph-btn-svg.is-hovered .plus-icon-container {
+      transform: translate(12px, 0);
+    }
+
+    /* Bezel neon ring on hover */
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .plus-bezel-ring,
+    .vv-art-create .create-morph-btn-svg.is-hovered .plus-bezel-ring {
+      stroke: #34d399;
+      stroke-width: 3.2;
+      filter: drop-shadow(0 0 6px rgba(52, 211, 153, 0.65));
+    }
+
+    /* Dynamic kinetic spin on plus sign: full 360 spin + 90deg snap */
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .plus-cross-pivot,
+    .vv-art-create .create-morph-btn-svg.is-hovered .plus-cross-pivot {
+      transform: rotate(450deg) scale(1.08);
+      animation: none !important;
+    }
+
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .plus-cross-shape,
+    .vv-art-create .create-morph-btn-svg.is-hovered .plus-cross-shape {
+      fill: url(#crtPlusCrossGrad);
+      filter: drop-shadow(0 0 4px #34d399);
+    }
+
+    /* Sparkles */
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sparkle-dot-1,
+    .vv-art-create .create-morph-btn-svg.is-hovered .sparkle-dot-1 {
+      opacity: 1;
+      transform: translate(16px, -14px) scale(1.1);
+      transition-delay: 0.12s;
+    }
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .sparkle-dot-2,
+    .vv-art-create .create-morph-btn-svg.is-hovered .sparkle-dot-2 {
+      opacity: 1;
+      transform: translate(-14px, 14px) scale(0.9);
+      transition-delay: 0.18s;
+    }
+
+    /* Cascading Sequential Text Reveal for "CREATE" */
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-letter,
+    .vv-art-create .create-morph-btn-svg.is-hovered .char-letter {
+      opacity: 1;
+      transform: translateY(0px) scale(1);
+    }
+
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-c, .vv-art-create .create-morph-btn-svg.is-hovered .char-c { transition-delay: 0.12s; }
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-r, .vv-art-create .create-morph-btn-svg.is-hovered .char-r { transition-delay: 0.16s; }
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-e, .vv-art-create .create-morph-btn-svg.is-hovered .char-e { transition-delay: 0.20s; }
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-a, .vv-art-create .create-morph-btn-svg.is-hovered .char-a { transition-delay: 0.24s; }
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-t, .vv-art-create .create-morph-btn-svg.is-hovered .char-t { transition-delay: 0.28s; }
+    .vv-art-create .create-morph-btn-svg:is(:hover,.is-hovered,.is-open,.is-animating) .char-e2, .vv-art-create .create-morph-btn-svg.is-hovered .char-e2 { transition-delay: 0.32s; }
+
+    /* Tactile press response */
+    .vv-art-create .create-morph-btn-svg:active .morph-btn-capsule {
+      transform: scale(0.97);
+      transition: transform 0.08s ease;
+    }
+  .vv-art-create .plus-icon-container{transform:translate(88px,0);transition:transform .52s cubic-bezier(.16,1,.3,1)} .vv-art-create:is(:is(:hover,.is-hovered,.is-open,.is-animating),.vv-playing,:focus-within) .plus-icon-container{transform:translate(12px,0)}</style>
+
+<g class="morph-btn-aura">
+<ellipse cx="120" cy="32" fill="url(#crtAuraGlow)" filter="url(#crtNeonGlow)" rx="104" ry="24"></ellipse>
+</g>
+
+<rect class="morph-btn-capsule" fill="url(#crtBtnBgGrad)" height="56" rx="28" ry="28" stroke="#27272a" stroke-width="1.2" width="56" x="92" y="4"></rect>
+
+<rect class="capsule-interior-highlight" fill="url(#crtBtnHoverBg)" height="54" opacity="0" pointer-events="none" rx="27" ry="27" width="54" x="93" y="5"></rect>
+
+<g class="sparkle-dot sparkle-dot-1" transform="translate(92, 4)">
+<path d="M 32 26 Q 32 32 26 32 Q 32 32 32 38 Q 32 32 38 32 Q 32 32 32 26 Z" fill="#6ee7b7"></path>
+</g>
+<g class="sparkle-dot sparkle-dot-2" transform="translate(92, 4)">
+<circle cx="32" cy="32" fill="#a7f3d0" r="1.8"></circle>
+</g>
+
+<g class="plus-icon-container" transform="translate(88, 0)">
+
+<circle class="plus-bezel-ring" cx="32" cy="32" fill="none" r="18" stroke="#6ee7b7" stroke-width="2.8"></circle>
+<circle cx="32" cy="32" fill="#09090b" opacity="0.6" r="14.2"></circle>
+
+<line opacity="0.8" stroke="#34d399" stroke-linecap="round" stroke-width="1.4" x1="32" x2="32" y1="14.5" y2="16.8"></line>
+<line opacity="0.6" stroke="#059669" stroke-linecap="round" stroke-width="1.2" x1="32" x2="32" y1="47.2" y2="49.5"></line>
+<line opacity="0.6" stroke="#059669" stroke-linecap="round" stroke-width="1.2" x1="14.5" x2="16.8" y1="32" y2="32"></line>
+<line opacity="0.6" stroke="#059669" stroke-linecap="round" stroke-width="1.2" x1="47.2" x2="49.5" y1="32" y2="32"></line>
+
+<g class="plus-cross-pivot">
+
+<path class="plus-cross-shape" d="M 30 22 C 30 20.9 30.9 20 32 20 C 33.1 20 34 20.9 34 22 L 34 30 L 42 30 C 43.1 30 44 30.9 44 32 C 44 33.1 43.1 34 42 34 L 34 34 L 34 42 C 34 43.1 33.1 44 32 44 C 30.9 44 30 43.1 30 42 L 30 34 L 22 34 C 20.9 34 20 33.1 20 32 C 20 30.9 20.9 30 22 30 L 30 30 Z" fill="#ecfdf5"></path>
+
+<circle cx="32" cy="32" fill="#047857" r="1.4"></circle>
+</g>
+</g>
+
+<g class="text-create-group">
+<text class="char-letter char-c" x="90" y="32">C</text>
+<text class="char-letter char-r" x="109" y="32">R</text>
+<text class="char-letter char-e" x="127" y="32">E</text>
+<text class="char-letter char-a" x="146" y="32">A</text>
+<text class="char-letter char-t" x="165" y="32">T</text>
+<text class="char-letter char-e2" x="183" y="32">E</text>
+</g>
+
+
+</svg>

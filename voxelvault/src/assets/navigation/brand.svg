@@ -1,0 +1,339 @@
+<svg class="voxelvault-brand-logo-animated" id="voxelVaultBrandInteractive" viewbox="0 0 380 120" xmlns="http://www.w3.org/2000/svg">
+<defs>
+
+
+<lineargradient id="vvTopGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#ecfdf5"></stop>
+<stop offset="35%" stop-color="#a7f3d0"></stop>
+<stop offset="100%" stop-color="#6ee7b7"></stop>
+</lineargradient>
+
+<lineargradient id="vvLeftGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#10b981"></stop>
+<stop offset="100%" stop-color="#047857"></stop>
+</lineargradient>
+
+<lineargradient id="vvRightGrad" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#059669"></stop>
+<stop offset="100%" stop-color="#064e3b"></stop>
+</lineargradient>
+
+<radialgradient cx="50%" cy="50%" id="vvFloorGlow" r="50%">
+<stop offset="0%" stop-color="#10b981" stop-opacity="0.5"></stop>
+<stop offset="55%" stop-color="#059669" stop-opacity="0.18"></stop>
+<stop offset="100%" stop-color="#000000" stop-opacity="0"></stop>
+</radialgradient>
+
+<radialgradient cx="50%" cy="50%" id="vvContactShadow" r="50%">
+<stop offset="0%" stop-color="#022c22" stop-opacity="0.9"></stop>
+<stop offset="60%" stop-color="#022c22" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#022c22" stop-opacity="0"></stop>
+</radialgradient>
+
+<radialgradient cx="50%" cy="50%" id="vvShockwaveGrad" r="50%">
+<stop offset="70%" stop-color="#34d399" stop-opacity="0"></stop>
+<stop offset="88%" stop-color="#6ee7b7" stop-opacity="0.45"></stop>
+<stop offset="100%" stop-color="#10b981" stop-opacity="0"></stop>
+</radialgradient>
+
+<filter height="160%" id="vvNeonGlow" width="160%" x="-30%" y="-30%">
+<fegaussianblur result="blur" stddeviation="2.8"></fegaussianblur>
+<femerge>
+<femergenode in="blur"></femergenode>
+<femergenode in="SourceGraphic"></femergenode>
+</femerge>
+</filter>
+</defs>
+<style>
+    .vv-art-brand .voxelvault-brand-logo-animated {
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overflow: visible;
+      background: transparent;
+      font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    }
+
+    /* GPU Layer Acceleration */
+    .vv-art-brand .cube-master-anchor,
+    .vv-art-brand .shadow-master-anchor,
+    .vv-art-brand .shockwave-anchor,
+    .vv-art-brand .sparkle-anchor,
+    .vv-art-brand .char-letter,
+    .vv-art-brand .text-underline-beam {
+      will-change: transform, opacity;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+    }
+
+    /* -------------------------------------------------------------
+       1. TRẠNG THÁI TĨNH BAN ĐẦU (RESTING STATE):
+       Đứng yên thanh lịch, sắc nét 100%, không rung giật.
+       ------------------------------------------------------------- */
+    .vv-art-brand .cube-master-anchor {
+      transform-origin: 58px 62px;
+      transform: translateY(0px) scale(1, 1) rotate(0deg);
+    }
+    .vv-art-brand .shadow-master-anchor {
+      transform-origin: 58px 94px;
+      transform: scale(1, 1);
+      opacity: 0.8;
+    }
+    .vv-art-brand .shockwave-anchor {
+      transform-origin: 58px 94px;
+      transform: scale(0.3);
+      opacity: 0;
+    }
+    .vv-art-brand .sparkle-anchor {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+
+    /* Text & Letter Baseline Defaults */
+    .vv-art-brand .char-letter {
+      display: inline-block;
+      transform-origin: center bottom;
+      transform: translateY(0px) scale(1) rotate(0deg);
+    }
+    .vv-art-brand .text-underline-beam {
+      opacity: 0;
+      transform-origin: 124px 84px;
+      transform: scaleX(0);
+    }
+
+    /* -------------------------------------------------------------
+       2. HOVER ANIMATION KEYFRAMES (1.0s UNINTERRUPTIBLE LOOP)
+       ------------------------------------------------------------- */
+    @keyframes vv-brand-singleLoopCubeBounce {
+      0% {
+        transform: translateY(0px) scale(1, 1) rotate(0deg);
+        animation-timing-function: cubic-bezier(0.25, 0.9, 0.35, 1);
+      }
+      14% {
+        transform: translateY(4px) scale(1.15, 0.86) rotate(-1deg);
+        animation-timing-function: cubic-bezier(0.2, 1, 0.3, 1);
+      }
+      36% {
+        transform: translateY(-22px) scale(0.92, 1.12) rotate(4deg);
+        animation-timing-function: cubic-bezier(0.45, 0.05, 0.7, 0.5);
+      }
+      54% {
+        transform: translateY(-24px) scale(1.04, 0.96) rotate(-2deg);
+        animation-timing-function: cubic-bezier(0.6, 0.05, 0.8, 0.55);
+      }
+      76% {
+        transform: translateY(3px) scale(1.12, 0.88) rotate(0.8deg);
+        animation-timing-function: cubic-bezier(0.25, 0.9, 0.4, 1);
+      }
+      90% {
+        transform: translateY(-2px) scale(0.98, 1.02) rotate(-0.4deg);
+        animation-timing-function: cubic-bezier(0.35, 0.9, 0.45, 1);
+      }
+      100% {
+        transform: translateY(0px) scale(1, 1) rotate(0deg);
+      }
+    }
+
+    @keyframes vv-brand-singleLoopShadowBounce {
+      0% { transform: scale(1, 1); opacity: 0.8; }
+      14% { transform: scale(1.15, 1.1); opacity: 0.95; }
+      36% { transform: scale(0.65, 0.65); opacity: 0.3; }
+      54% { transform: scale(0.6, 0.6); opacity: 0.25; }
+      76% { transform: scale(1.18, 1.1); opacity: 0.95; }
+      90% { transform: scale(0.94, 0.94); opacity: 0.7; }
+      100% { transform: scale(1, 1); opacity: 0.8; }
+    }
+
+    @keyframes vv-brand-singleLoopShockwaveRipple {
+      0%, 28% { transform: scale(0.3); opacity: 0; }
+      38% { opacity: 0.75; }
+      65% { transform: scale(1.35); opacity: 0; }
+      100% { transform: scale(1.35); opacity: 0; }
+    }
+
+    @keyframes vv-brand-singleLoopSparkle {
+      0%, 25% { opacity: 0; transform: scale(0.3) translateY(0); }
+      45% { opacity: 1; transform: scale(1.2) translateY(-6px); }
+      70% { opacity: 0; transform: scale(0.5) translateY(-14px); }
+      100% { opacity: 0; }
+    }
+
+    /* TEXT WAVE CASCADE KEYFRAMES (Làn sóng gợn nảy từng chữ cái) */
+    @keyframes vv-brand-textCharWave {
+      0% {
+        transform: translateY(0px) scale(1) rotate(0deg);
+        fill: #ffffff;
+        animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1);
+      }
+      30% {
+        transform: translateY(-8px) scale(1.08) rotate(-1.5deg);
+        fill: #34d399;
+        animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.5);
+      }
+      60% {
+        transform: translateY(2px) scale(0.96) rotate(0.8deg);
+        fill: #a7f3d0;
+        animation-timing-function: cubic-bezier(0.2, 0.9, 0.4, 1);
+      }
+      85% {
+        transform: translateY(-1px) scale(1.01);
+        animation-timing-function: cubic-bezier(0.3, 0.9, 0.4, 1);
+      }
+      100% {
+        transform: translateY(0px) scale(1) rotate(0deg);
+        fill: #ffffff;
+      }
+    }
+
+    @keyframes vv-brand-textCharWaveVault {
+      0% {
+        transform: translateY(0px) scale(1) rotate(0deg);
+        fill: #f4f4f5;
+        animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1);
+      }
+      30% {
+        transform: translateY(-8px) scale(1.08) rotate(1.5deg);
+        fill: #6ee7b7;
+        animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.5);
+      }
+      60% {
+        transform: translateY(2px) scale(0.96) rotate(-0.8deg);
+        fill: #ecfdf5;
+        animation-timing-function: cubic-bezier(0.2, 0.9, 0.4, 1);
+      }
+      85% {
+        transform: translateY(-1px) scale(1.01);
+        animation-timing-function: cubic-bezier(0.3, 0.9, 0.4, 1);
+      }
+      100% {
+        transform: translateY(0px) scale(1) rotate(0deg);
+        fill: #f4f4f5;
+      }
+    }
+
+    /* Underline Neon Laser Beam Keyframes */
+    @keyframes vv-brand-laserBeamSweep {
+      0% {
+        opacity: 0;
+        transform: scaleX(0);
+        transform-origin: left;
+      }
+      30% {
+        opacity: 0.95;
+        transform: scaleX(1);
+        transform-origin: left;
+      }
+      70% {
+        opacity: 0.8;
+        transform: scaleX(1);
+        transform-origin: right;
+      }
+      100% {
+        opacity: 0;
+        transform: scaleX(0);
+        transform-origin: right;
+      }
+    }
+
+    /* =============================================================
+       LỚP TRẠNG THÁI ACTIVE ĐƯỢC ĐIỀU KHIỂN (UNINTERRUPTIBLE LOOP)
+       Khi có class .is-animating, các keyframe kích hoạt và chạy trọn vẹn
+       cho đến khi class bị gỡ bỏ sau khi hết cycle (1.05s).
+       Ngay cả khi người dùng lia chuột ra ngoài (.voxelvault-brand-logo-animated:not(:is(:hover,.is-hovered,.is-open,.is-animating))),
+       các element VẪN TIẾP TỤC CHẠY và KHÔNG BỊ RESET ĐỘT NGỘT!
+       ============================================================= */
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .cube-master-anchor {
+      animation: vv-brand-singleLoopCubeBounce 1.0s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+    }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .shadow-master-anchor {
+      animation: vv-brand-singleLoopShadowBounce 1.0s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+    }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .shockwave-anchor {
+      animation: vv-brand-singleLoopShockwaveRipple 1.0s ease-out forwards;
+    }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .sparkle-anchor {
+      animation: vv-brand-singleLoopSparkle 1.0s ease-out forwards;
+    }
+
+    /* Cascading Text Wave (chạy trọn vẹn theo class .is-animating) */
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-v-1 { animation: vv-brand-textCharWave 0.75s ease-out forwards; animation-delay: 0.08s; }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-o   { animation: vv-brand-textCharWave 0.75s ease-out forwards; animation-delay: 0.13s; }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-x   { animation: vv-brand-textCharWave 0.75s ease-out forwards; animation-delay: 0.18s; }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-e   { animation: vv-brand-textCharWave 0.75s ease-out forwards; animation-delay: 0.23s; }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-l   { animation: vv-brand-textCharWave 0.75s ease-out forwards; animation-delay: 0.28s; }
+
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-v-2 { animation: vv-brand-vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.33s; }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-a   { animation: vv-brand-vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.38s; }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-u   { animation: vv-brand-vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.43s; }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-l-2 { animation: vv-brand-vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.48s; }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-t   { animation: vv-brand-vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.53s; }
+
+    /* Laser beam underline */
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .text-underline-beam {
+      animation: vv-brand-laserBeamSweep 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation-delay: 0.15s;
+    }
+  </style>
+
+<g class="shadow-master-anchor">
+<ellipse cx="58" cy="94" fill="url(#vvFloorGlow)" rx="42" ry="13"></ellipse>
+<ellipse cx="58" cy="93" fill="url(#vvContactShadow)" rx="30" ry="9"></ellipse>
+<ellipse cx="58" cy="93.5" fill="#011913" opacity="0.8" rx="18" ry="5.5"></ellipse>
+</g>
+<g class="shockwave-anchor">
+<ellipse cx="58" cy="94" fill="url(#vvShockwaveGrad)" rx="38" ry="11"></ellipse>
+</g>
+
+<g class="sparkle-anchor" transform-origin="24px 28px">
+<path d="M 24 20 Q 24 28 16 28 Q 24 28 24 36 Q 24 28 32 28 Q 24 28 24 20 Z" fill="#6ee7b7"></path>
+<circle cx="18" cy="22" fill="#ffffff" r="1.4"></circle>
+</g>
+
+<g class="cube-master-anchor">
+<g filter="url(#vvNeonGlow)">
+<g transform="translate(58, 56)">
+
+<polygon fill="url(#vvTopGrad)" points="0,-32 32,-14 0,5 -32,-14"></polygon>
+<line opacity="0.92" stroke="#ffffff" stroke-linecap="round" stroke-width="1.8" x1="0" x2="31" y1="-31" y2="-14"></line>
+<line opacity="0.75" stroke="#ffffff" stroke-linecap="round" stroke-width="1.4" x1="-31" x2="0" y1="-14" y2="-31"></line>
+<circle cx="0" cy="-32" fill="#ffffff" r="2.2"></circle>
+
+<polygon fill="url(#vvLeftGrad)" points="-32,-14 0,5 0,40 -32,21"></polygon>
+<polygon fill="#34d399" opacity="0.22" points="-30,-12 -2,5 -2,36 -30,19"></polygon>
+
+<polygon fill="url(#vvRightGrad)" points="0,5 32,-14 32,21 0,40"></polygon>
+<polygon fill="#022c22" opacity="0.28" points="2,6 30,-11 30,19 2,36"></polygon>
+
+<line opacity="0.85" stroke="#a7f3d0" stroke-linecap="round" stroke-width="1.8" x1="0" x2="0" y1="5" y2="40"></line>
+<polygon fill="none" opacity="0.65" points="0,-32 32,-14 32,21 0,40 -32,21 -32,-14" stroke="#6ee7b7" stroke-linejoin="round" stroke-width="1.4"></polygon>
+<circle cx="0" cy="5" fill="#ffffff" opacity="0.95" r="2"></circle>
+</g>
+</g>
+</g>
+
+
+<g fill="#ffffff" font-family="'Outfit', system-ui, sans-serif" font-size="44" font-weight="800" id="voxelWordGroup" letter-spacing="-0.03em">
+<text class="char-letter char-v-1" x="114" y="73">V</text>
+<text class="char-letter char-o" x="144" y="73">o</text>
+<text class="char-letter char-x" x="171" y="73">x</text>
+<text class="char-letter char-e" x="195" y="73">e</text>
+<text class="char-letter char-l" x="221" y="73">l</text>
+</g>
+
+<g fill="#f4f4f5" font-family="'Outfit', system-ui, sans-serif" font-size="44" font-weight="900" id="vaultWordGroup" letter-spacing="-0.02em">
+<text class="char-letter char-v-2" x="236" y="73">V</text>
+<text class="char-letter char-a" x="268" y="73">a</text>
+<text class="char-letter char-u" x="294" y="73">u</text>
+<text class="char-letter char-l-2" x="320" y="73">l</text>
+<text class="char-letter char-t" x="333" y="73">t</text>
+</g>
+
+<g class="text-underline-beam">
+<line filter="url(#vvNeonGlow)" stroke="url(#vvTopGrad)" stroke-linecap="round" stroke-width="2.2" x1="114" x2="346" y1="84" y2="84"></line>
+<line opacity="0.8" stroke="#ffffff" stroke-linecap="round" stroke-width="1" x1="114" x2="346" y1="84" y2="84"></line>
+</g>
+
+
+</svg>
