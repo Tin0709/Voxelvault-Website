@@ -125,5 +125,25 @@ test('migration, owner isolation, quota, publish, deletion and orphan cleanup', 
     assert.equal((await pg.query("select * from public.image_feed($1,'','','Avatar',30)",[seed])).rows.length,30);
     await pg.exec('set role anon');
     await assert.rejects(pg.query("select * from public.image_feed($1,'','','',30)",[seed]),/permission denied/);
+    await pg.exec('reset role');
+    await pg.exec(await readFile(new URL('../supabase/migrations/202609230005_unused_upload_deletion.sql',import.meta.url),'utf8'));
+    const unused=randomUUID();await reserve(unused,40,'image');
+    const claim=(asOwner,id)=>pg.query('select * from public.claim_unused_upload($1,$2)',[asOwner,id]);
+    await assert.rejects(claim(owner,unused),/still uploading/);
+    await pg.query("update public.upload_sessions set status='ready' where id=$1",[unused]);
+    await assert.rejects(claim(other,unused),/not found/);
+    await assert.rejects(claim(owner,first[0].image_id),/in use/);
+    await saveCover(owner,5,unused,unused);
+    await assert.rejects(claim(owner,unused),/in use/);
+    await saveCover(owner,6,null,null);
+    assert.equal((await claim(owner,unused)).rows[0].status,'deleting');
+    assert.equal((await claim(owner,unused)).rows[0].status,'deleting');
+    const before=Number((await pg.query('select sum(size_bytes) as used from public.upload_sessions where owner_id=$1',[owner])).rows[0].used);
+    const fresh=randomUUID();await reserve(fresh,30,'image');
+    await pg.query("update public.upload_sessions set status='ready' where id=$1",[fresh]);
+    await claim(owner,fresh);
+    assert.equal(Number((await pg.query('select sum(size_bytes) as used from public.upload_sessions where owner_id=$1',[owner])).rows[0].used),before+30);
+    await pg.exec('set role authenticated');
+    await assert.rejects(claim(owner,fresh),/permission denied/);
   } finally { await pg.close(); }
 });

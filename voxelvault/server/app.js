@@ -6,6 +6,7 @@ import { PutObjectCommand, HeadObjectCommand, GetObjectCommand, DeleteObjectComm
 import { fileTypeFromBuffer } from 'file-type';
 import { MAX_BYTES, requireUuid, storageFor, validatePost } from './validation.js';
 import { streamArchive, safeFilename } from './archive.js';
+import { storageReport } from './storage-report.js';
 
 export function createApi({ db = null, r2 = null, env = {} } = {}) {
 const configured = Boolean(db);
@@ -183,6 +184,33 @@ const server = http.createServer(async (req, res) => {
         await cleanup(user.id);
       }
       json(res,200,{...await profileFor(user.id),email:user.email}); return;
+    }
+    if (path === '/api/me/storage/details' && req.method === 'GET') {
+      const user = await userFor(req,true);
+      const [profile,account]=await Promise.all([
+        db.from('profiles').select('avatar_upload_id,cover_upload_id').eq('id',user.id).single().then(checked),
+        db.from('storage_accounts').select('quota_bytes').eq('owner_id',user.id).single().then(checked),
+      ]);
+      const files=[];
+      for(let offset=0;;offset+=1000){
+        const rows=checked(await db.from('upload_sessions').select('id,original_name,size_bytes,kind,provider,status,post_id,created_at,object_key').eq('owner_id',user.id).order('id').range(offset,offset+999));
+        files.push(...rows);if(rows.length<1000)break;
+      }
+      const report=storageReport(files,profile,account.quota_bytes);
+      const byId=new Map(files.map(file=>[file.id,file]));
+      report.items=report.items.map(item=>({...item,previewUrl:item.kind==='image'&&item.provider==='supabase'&&byId.get(item.id).status==='ready'?publicImage(byId.get(item.id)):null}));
+      json(res,200,report);return;
+    }
+    if (/^\/api\/me\/storage\/uploads\/[^/]+$/.test(path) && req.method === 'DELETE') {
+      const user=await userFor(req,true);
+      const result=await db.rpc('claim_unused_upload',{p_owner:user.id,p_upload:requireUuid(path.split('/')[5])});
+      if(result.error){
+        if(result.error.code==='PGRST202')throw fail(503,'Apply migration 202609230005_unused_upload_deletion.sql to enable safe removal.');
+        throw fail(409,result.error.message);
+      }
+      const file=result.data;
+      try {await removeObject(file);}catch{throw fail(503,'Storage deletion is pending. Retry removal; quota is retained until deletion succeeds.');}
+      json(res,200,{deleted:true});return;
     }
     if (path === '/api/me/storage' && req.method === 'GET') {
       const user = await userFor(req,true);

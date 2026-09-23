@@ -18,7 +18,7 @@ export async function api(path, options = {}) {
     if (options.method && options.method !== 'GET') notify(body.error || 'Request failed','error');
     throw new Error(body.error || 'Request failed');
   }
-  if (options.method === 'DELETE') notify('The post and its files have been removed.','success','Post deleted');
+  if (options.method === 'DELETE' && path.startsWith('/posts/')) notify('The post and its files have been removed.','success','Post deleted');
   if (options.method === 'POST' && path.startsWith('/posts/')) notify('Your changes are saved and your post is ready to view.','success','Post saved');
   if (options.method === 'POST' && path === '/me/profile') notify('Your profile changes have been saved.','success','Profile updated');
   return body;

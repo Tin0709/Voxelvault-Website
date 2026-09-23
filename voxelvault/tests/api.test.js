@@ -108,6 +108,18 @@ test('API never exposes private files or external links to another user',async()
     assert.deepEqual(await (await fetch(`${base}/api/me/categories`,{headers:{Authorization:'Bearer other'}})).json(),{categories:[]});
   });
 });
+test('storage detail endpoint is authenticated and scoped to the requesting owner',async()=>{
+  const db=fakeBackend();
+  db.tables.storage_accounts=[{owner_id:owner,quota_bytes:200000000},{owner_id:other,quota_bytes:200000000}];
+  db.tables.profiles.push({id:other});
+  await running({db},async base=>{
+    assert.equal((await fetch(`${base}/api/me/storage/details`)).status,401);
+    const own=await (await fetch(`${base}/api/me/storage/details`,{headers:{Authorization:'Bearer owner'}})).json();
+    assert.equal(own.usedBytes,3);assert.equal(own.items[0].name,'secret.zip');
+    const stranger=await (await fetch(`${base}/api/me/storage/details?owner=${owner}`,{headers:{Authorization:'Bearer other'}})).json();
+    assert.equal(stranger.usedBytes,0);assert.deepEqual(stranger.items,[]);
+  });
+});
 test('API configuration failures and origin boundaries are explicit',async()=>{
   await running({},async(base)=>{
     assert.equal((await fetch(`${base}/api/posts`)).status,503);

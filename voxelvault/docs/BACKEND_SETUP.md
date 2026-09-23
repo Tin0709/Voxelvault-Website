@@ -239,3 +239,10 @@ with an amber draft style. They are not published or synced across devices. Use 
 later before closing/reloading; native browser unload warnings cannot save files for you.
 Clearing site data removes these local drafts. Publishing removes the corresponding
 local draft after the server confirms the post was saved.
+
+Unused upload review: apply `supabase/migrations/202609230005_unused_upload_deletion.sql`.
+Storage details now includes public image previews, exact bytes and per-file removal.
+Removal claims only the authenticated owner's ready/unattached or retryable deleting
+uploads under the same account lock used by post/profile saves. Active profile images,
+post image/attachment references and pending uploads are rejected. Quota is released
+only after the storage provider confirms removal. A failed deletion remains retryable.
