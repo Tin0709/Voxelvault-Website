@@ -190,6 +190,9 @@ test('image feed includes public description without private attachment metadata
 test('search suggestions expose only public metadata, cap results and treat wildcard input literally',async()=>{
  const db=fakeBackend();for(let i=0;i<10;i++)db.tables.posts.push({id:'sample-'+i,title:'Public Castle '+i,category:'castle',owner_id:owner,description:'Not in suggestions'});
  await running({db},async base=>{
+  const single=(await (await fetch(base+'/api/search/suggestions?q=s')).json()).items;
+  assert.equal(single.length,6);assert.ok(single.every(item=>item.title.toLowerCase().includes('s')));
+  assert.deepEqual((await (await fetch(base+'/api/search/suggestions?q=%20')).json()).items,[]);
   const items=(await (await fetch(base+'/api/search/suggestions?q=PUBLIC')).json()).items;
   assert.equal(items.length,6);assert.deepEqual(Object.keys(items[0]).sort(),['category','id','title']);
   assert.deepEqual((await (await fetch(base+'/api/search/suggestions?q=%25')).json()).items,[]);
