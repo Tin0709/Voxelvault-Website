@@ -264,11 +264,11 @@
     .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-e   { animation: vv-brand-textCharWave 0.75s ease-out forwards; animation-delay: 0.23s; }
     .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-l   { animation: vv-brand-textCharWave 0.75s ease-out forwards; animation-delay: 0.28s; }
 
-    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-v-2 { animation: vv-brand-vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.33s; }
-    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-a   { animation: vv-brand-vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.38s; }
-    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-u   { animation: vv-brand-vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.43s; }
-    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-l-2 { animation: vv-brand-vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.48s; }
-    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-t   { animation: vv-brand-vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.53s; }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-v-2 { animation: vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.33s; }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-a   { animation: vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.38s; }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-u   { animation: vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.43s; }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-l-2 { animation: vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.48s; }
+    .vv-art-brand .voxelvault-brand-logo-animated.is-animating .char-t   { animation: vv-brand-textCharWaveVault 0.75s ease-out forwards; animation-delay: 0.53s; }
 
     /* Laser beam underline */
     .vv-art-brand .voxelvault-brand-logo-animated.is-animating .text-underline-beam {

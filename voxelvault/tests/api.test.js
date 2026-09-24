@@ -38,6 +38,8 @@ function fakeBackend() {
         delete() {change={type:'delete'};return query;},
         eq(key,value) { rows=rows.filter((row)=>row[key]===value); return query; },
         in(key,values) { rows=rows.filter(row=>values.includes(row[key])); return query; },
+        ilike(key,pattern) { const term=pattern.slice(1,-1).replace(/\\(.)/g,'$1').toLowerCase();rows=rows.filter(row=>row[key].toLowerCase().includes(term));return query; },
+        limit(count) {rows=rows.slice(0,count);return query;},
         order() { return query; },
         range(start,end) { rows=rows.slice(start,end+1); return query; },
         single() { return Promise.resolve(result(true)); },
@@ -182,5 +184,16 @@ test('image feed includes public description without private attachment metadata
   assert.equal(result.items[0].creatorId,owner);
   assert.equal(result.next,null);
   assert.equal(JSON.stringify(result).includes('secret.zip'),false);
+ });
+});
+
+test('search suggestions expose only public metadata, cap results and treat wildcard input literally',async()=>{
+ const db=fakeBackend();for(let i=0;i<10;i++)db.tables.posts.push({id:'sample-'+i,title:'Public Castle '+i,category:'castle',owner_id:owner,description:'Not in suggestions'});
+ await running({db},async base=>{
+  const items=(await (await fetch(base+'/api/search/suggestions?q=PUBLIC')).json()).items;
+  assert.equal(items.length,6);assert.deepEqual(Object.keys(items[0]).sort(),['category','id','title']);
+  assert.deepEqual((await (await fetch(base+'/api/search/suggestions?q=%25')).json()).items,[]);
+  assert.deepEqual((await (await fetch(base+'/api/search/suggestions?q=%25_')).json()).items,[]);
+  assert.equal((await fetch(base+'/api/search/suggestions?q='+ 'a'.repeat(201))).status,400);
  });
 });

@@ -4,6 +4,7 @@ import {useApi} from '../../lib/useApi';
 import {formatBytes} from '../../utils/attachments';
 import Icon from '../ui/Icon';
 import Brand from '../ui/Brand';
+import SearchField from './SearchField';
 
 function MenuLink({to,onNavigate,children,className='',...props}){
  const timer=useRef(null);const [playing,setPlaying]=useState(false);
@@ -27,11 +28,11 @@ function AccountMenu({onNavigate,pathname,user}){
  </>;
 }
 export default function MobileMenu({user,busy,pathname,query,onSearch,onNavigate,onClose,onSignOut}){
- const [search,setSearch]=useState(query);
+
  return <div className="vv-menu-content">
   <div className="vv-menu-top"><span>● YOUR VAULT</span><button type="button" onClick={onClose} aria-label="Close navigation"><Icon name="close"/></button></div>
   <div className="vv-menu-brand"><Brand onFollow={onNavigate}/><small>SPATIAL ARCHIVE</small></div>
-  <form role="search" className="vv-menu-search" onSubmit={e=>{e.preventDefault();onSearch(search);}}><Icon name="search"/><label className="sr-only" htmlFor="mobile-search">Search creations</label><input id="mobile-search" type="search" enterKeyHint="search" placeholder="Search worlds, builds…" value={search} onChange={e=>setSearch(e.target.value)}/><button type="submit" aria-label="Search"><Icon name="arrowUpRight"/></button></form>
+  <SearchField mobile searchQuery={query} onSearchChange={onSearch}/>
   <nav aria-label="Mobile navigation" className="vv-menu-links">
    <MenuLink to="/explore" onNavigate={onNavigate} aria-current={pathname==='/explore'?'page':undefined} className="vv-menu-row"><span className="vv-menu-icon"><Icon name="compass"/></span><span><strong>Explore</strong><small>Discover worlds & creations</small></span><span className="vv-menu-chevron"><Icon name="chevronRight"/></span></MenuLink>
    {user&&<MenuLink to="/my-posts" onNavigate={onNavigate} aria-current={pathname==='/my-posts'?'page':undefined} className="vv-menu-row"><span className="vv-menu-icon"><Icon name="archive"/></span><span><strong>My Posts</strong><small>Manage your posts & files</small></span><span className="vv-menu-chevron"><Icon name="chevronRight"/></span></MenuLink>}

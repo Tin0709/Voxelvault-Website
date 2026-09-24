@@ -63,8 +63,8 @@ function CreatorProfilePage({ own = false }) {
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/10 to-transparent"/>
         </div>
 
-        <div className="px-6 pb-8 sm:px-8">
-          <div className="relative -mt-16 flex flex-wrap items-end justify-between gap-5">
+        <div className="vv-profile-summary px-5 pb-8 sm:px-8">
+          <div className="vv-profile-top relative -mt-16 flex flex-wrap items-end justify-between gap-5">
             <div
               aria-hidden="true"
               className="flex h-32 w-32 items-center justify-center rounded-3xl border-4 border-background bg-primary text-3xl font-semibold text-on-primary"
@@ -72,20 +72,20 @@ function CreatorProfilePage({ own = false }) {
               {creator.avatarUrl ? <img src={creator.avatarUrl} alt="" className="h-full w-full rounded-2xl object-cover" /> : creator.initials}
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">{user?.id===creatorId&&<Link to="/my-posts" className="inline-flex items-center gap-2 rounded-full border border-primary/30 px-5 py-3 text-sm text-primary"><Icon name="archive"/>My Posts & storage</Link>}{user?.id===creatorId&&<Link to="/profile/edit" className="vault-action inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm text-on-primary"><Icon name="edit"/>Edit profile</Link>}<button type="button" onClick={async()=>{try{await navigator.clipboard.writeText(window.location.origin+'/creators/'+creatorId);notify('Profile link copied.');}catch{notify('Copy the profile URL from your address bar.','info');}}} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-3 text-sm"><Icon name="link"/>Share profile</button><span className="rounded-full border border-white/10 px-4 py-2 text-sm">
-              {creatorPosts.length}{" "}
-              {creatorPosts.length === 1 ? "creation" : "creations"}
-            </span></div>
+            <div className="vv-profile-actions">{user?.id===creatorId&&<Link to="/my-posts" className="vv-profile-storage inline-flex items-center gap-2 rounded-full border border-primary/30 px-5 py-3 text-sm text-primary"><Icon name="archive"/>My Posts & storage</Link>}{user?.id===creatorId&&<Link to="/profile/edit" className="vault-action inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm text-on-primary"><Icon name="edit"/>Edit profile</Link>}<button type="button" onClick={async()=>{try{await navigator.clipboard.writeText(window.location.origin+'/creators/'+creatorId);notify('Profile link copied.');}catch{notify('Copy the profile URL from your address bar.','info');}}} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-3 text-sm"><Icon name="link"/>Share profile</button></div>
           </div>
 
-          <h1
+          <div className="vv-profile-identity"><h1
             id="creator-name"
             className="mt-5 break-words font-headline-lg text-3xl sm:text-4xl"
           >
             {creator.name}
           </h1>
 
-          <p className="mt-2 text-sm text-primary">@{creator.handle}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2"><p className="text-sm text-primary">@{creator.handle}</p><span className="vv-profile-count rounded-full border border-white/10 px-3 py-1.5 text-xs text-on-surface-variant">
+              {creatorPosts.length}{" "}
+              {creatorPosts.length === 1 ? "creation" : "creations"}
+            </span></div></div>
           {creator.country&&<p className="mt-3 flex items-center gap-2 text-sm text-on-surface-variant"><Icon name="globe"/>{new Intl.DisplayNames(['en'],{type:'region'}).of(creator.country)}</p>}
 
           <p className="mt-5 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-on-surface-variant">

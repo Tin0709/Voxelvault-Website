@@ -145,6 +145,14 @@ const server = http.createServer(async (req, res) => {
     const path = url.pathname;
     if (path === '/api/health') { json(res,200,{ configured, r2Configured: Boolean(r2) }); return; }
     if (!db) throw fail(503, 'Backend not configured. Follow docs/BACKEND_SETUP.md.');
+    if (path === '/api/search/suggestions' && req.method === 'GET') {
+      const term=(url.searchParams.get('q')||'').trim();
+      if(term.length>200)throw fail(400,'Search is too long');
+      if(term.length<2){json(res,200,{items:[]});return;}
+      const literal=term.replace(/[\\%_]/g,character=>'\\'+character);
+      const items=checked(await db.from('posts').select('id,title,category').ilike('title','%'+literal+'%').order('created_at',{ascending:false}).limit(6));
+      json(res,200,{items:items.map(({id,title,category})=>({id,title,category}))});return;
+    }
     if (path === '/api/feed' && req.method === 'GET') {
       const seed=requireUuid(url.searchParams.get('seed'));
       const after=url.searchParams.get('after')||'';

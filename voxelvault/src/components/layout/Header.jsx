@@ -3,16 +3,10 @@ import {useState,useRef,useEffect} from 'react';
 import {useAuth} from '../../auth/AuthContext';
 import Brand from '../ui/Brand';
 import AnimatedNav from '../ui/AnimatedNav';
-import AnimatedArtwork from '../ui/AnimatedArtwork';
+import SearchField from './SearchField';
 import MobileMenu from './MobileMenu';
 import {notify} from '../../lib/notifications';
 
-function SearchField({searchQuery,onSearchChange,onFocusChange}){
- const input=useRef(null);const [hover,setHover]=useState(false);const [focused,setFocused]=useState(false);
- return <div role="search" onPointerEnter={()=>setHover(true)} onPointerLeave={()=>setHover(false)} onFocus={()=>{setFocused(true);onFocusChange(true);}} onBlur={()=>{setFocused(false);onFocusChange(false);}} className={`vv-search ${hover||focused?'vv-search-expanded':''}`}>
-  <AnimatedArtwork name="search" active={hover||focused}/><label className="sr-only" htmlFor="creation-search">Search creations</label><input ref={input} id="creation-search" type="search" value={searchQuery} onChange={e=>onSearchChange(e.target.value)} placeholder="Search worlds, builds…"/>{!focused&&<button type="button" className="vv-search-trigger" aria-label="Open search" onClick={()=>input.current?.focus()}/>}
- </div>;
-}
 function NavigationIndicator({bar,pathname,hidden}){
  const marker=useRef(null);
  useEffect(()=>{
