@@ -14,7 +14,7 @@ export default function HomePage(){
  return <main className="vv-home mx-auto w-full max-w-[1500px] px-6 pb-20 lg:px-10">
   <section className="vv-home-hero">
    <HeroQuote/>
-   <ShowcaseDeck posts={posts.slice(0,4)} loading={loading}/>
+   <ShowcaseDeck posts={posts} loading={loading}/>
   </section>
   <section className="vv-home-principles vv-home-principles-animated" aria-label="Your creative archive">{[[compass,'Discover something extraordinary','Explore the details, find a new perspective, and meet the creators behind every world.'],[rainbow,'Tell the whole story','Bring your builds to life with galleries, descriptions, and credit where it belongs.'],[slime,'Make space for your ideas','Keep your post images and private build files together in your own creative vault.']].map(([image,title,text])=><article key={title}><img src={image} alt="" className="vv-principle-art"/><h2>{title}</h2><p>{text}</p></article>)}</section>
   <LatestCreations posts={posts} loading={loading} error={error}/>

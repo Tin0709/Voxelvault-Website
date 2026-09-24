@@ -2,7 +2,16 @@ import {useState} from 'react';
 import {Link} from 'react-router';
 import Icon from '../ui/Icon';
 import HomeImage from './HomeImage';
+import {randomPostWave} from '../../lib/randomPostWave';
 export default function ShowcaseDeck({posts,loading}){
+ return posts.length ? <RandomShowcase key={posts.map(post=>post.id).join(',')} posts={posts}/> : <Deck posts={[]} loading={loading}/>;
+}
+function RandomShowcase({posts}){
+ // Pick once when this visit's posts arrive; renders and arrow clicks keep the same deck.
+ const [selectedIds]=useState(()=>randomPostWave(posts).map(post=>post.id));
+ return <Deck posts={selectedIds.map(id=>posts.find(post=>post.id===id))}/>;
+}
+function Deck({posts,loading=false}){
  const [index,setIndex]=useState(0);
  const active=index%Math.max(1,posts.length);
  const shift=direction=>setIndex(current=>(current+direction+posts.length)%posts.length);
