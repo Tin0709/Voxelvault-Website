@@ -1,19 +1,20 @@
 import {Link} from 'react-router';
 import {useApi} from '../lib/useApi';
 import Icon from '../components/ui/Icon';
+import HeroQuote from '../components/home/HeroQuote';
 import ShowcaseDeck from '../components/home/ShowcaseDeck';
 import LatestCreations from '../components/home/LatestCreations';
 import compass from '../assets/home/compass.svg';
 import rainbow from '../assets/home/rainbow.svg';
 import slime from '../assets/home/slime.svg';
 export default function HomePage(){
- const {data,loading,error}=useApi('/posts?limit=4');
+ const {data,loading,error}=useApi('/posts?limit=50');
  const posts=data?.posts||[];
 
  return <main className="vv-home mx-auto w-full max-w-[1500px] px-6 pb-20 lg:px-10">
   <section className="vv-home-hero">
-   <div className="vv-home-intro"><p className="vv-home-eyebrow"><span/> A HOME FOR EXTRAORDINARY WORLDS</p><h1>Built block<br/>by block.<br/><em>Kept forever.</em></h1><p className="vv-home-description">Great worlds start with a little imagination. Discover remarkable builds, share the story behind yours, and give your creations a place to belong.</p><div className="flex flex-wrap gap-3"><Link to="/explore" className="vv-home-primary">Enter the archive <Icon name="arrowUpRight"/></Link><Link to="/create" className="vv-home-secondary">Share a creation <Icon name="plus"/></Link></div><div className="vv-home-note"><Icon name="cube"/><span>YOUR IDEAS. YOUR WORLDS. YOUR VAULT.</span></div></div>
-   <ShowcaseDeck posts={posts} loading={loading}/>
+   <HeroQuote/>
+   <ShowcaseDeck posts={posts.slice(0,4)} loading={loading}/>
   </section>
   <section className="vv-home-principles vv-home-principles-animated" aria-label="Your creative archive">{[[compass,'Discover something extraordinary','Explore the details, find a new perspective, and meet the creators behind every world.'],[rainbow,'Tell the whole story','Bring your builds to life with galleries, descriptions, and credit where it belongs.'],[slime,'Make space for your ideas','Keep your post images and private build files together in your own creative vault.']].map(([image,title,text])=><article key={title}><img src={image} alt="" className="vv-principle-art"/><h2>{title}</h2><p>{text}</p></article>)}</section>
   <LatestCreations posts={posts} loading={loading} error={error}/>
