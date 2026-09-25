@@ -85,7 +85,7 @@ function App() {
       <Notifications />
       <ConfirmHost />
 
-      <Footer />
+      <Footer onExplore={resetExplore} />
     </div>
   );
 }

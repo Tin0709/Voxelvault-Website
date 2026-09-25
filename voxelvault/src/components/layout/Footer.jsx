@@ -1,59 +1,26 @@
-
+import {Link} from 'react-router';
+import {useAuth} from '../../auth/AuthContext';
 import Brand from '../ui/Brand';
+import Icon from '../ui/Icon';
 
-function Footer() {
-  function scrollToTop() {
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    window.scrollTo({
-      top: 0,
-      behavior: prefersReducedMotion ? "instant" : "smooth",
-    });
-  }
-
-  return (
-    <footer className="border-t border-white/10">
-      <div className="mx-auto max-w-[1600px] px-6 py-10 lg:px-10">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <Brand />
-
-            <p className="mt-2 max-w-sm text-sm leading-relaxed text-on-surface-variant">
-              A home for extraordinary worlds and the ideas behind them.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={scrollToTop}
-            className="flex w-fit items-center gap-2 rounded-full border border-white/15 px-5 py-3 text-sm text-on-surface transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-          >
-            Back to top
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 19V5M5 12l7-7 7 7" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="mt-8 flex flex-col gap-2 border-t border-white/5 pt-6 text-xs leading-relaxed text-on-surface-variant sm:flex-row sm:justify-between">
-          <p>VoxelVault · {new Date().getFullYear()}</p>
-          <p>Images and builds belong to their respective creators.</p>
-        </div>
-      </div>
-    </footer>
-  );
+export default function Footer({onExplore}) {
+ const {user}=useAuth();
+ function scrollToTop(){window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});}
+ const groups=[
+  {title:'Discover',icon:'compass',links:[['Home','/'],['Explore creations','/explore'],['Share a creation','/create']]},
+  {title:'Creator studio',icon:'cube',links:[['My posts & storage','/my-posts'],['My profile','/profile'],['Edit profile','/profile/edit']]},
+  {title:'Your vault',icon:'archive',links:user?[['Open my vault','/my-posts'],['Create a new post','/create']]:[['Join the community','/register'],['Sign in','/login']]},
+ ];
+ return <footer className="vv-footer">
+  <div className="vv-footer-ambient" aria-hidden="true"><i/><i/><i/><i/><i/><i/></div>
+  <div className="vv-footer-inner">
+   <div className="vv-footer-top"><div><div className="vv-footer-brand"><Brand/><span>{new Date().getFullYear()}</span></div><p>A home for extraordinary worlds and the ideas behind them.</p></div><button type="button" onClick={scrollToTop} className="vv-footer-top-button">Back to top <span><Icon name="arrow" className="rotate-90"/></span></button></div>
+   <div className="vv-footer-strip"><span><i/> BUILT BLOCK BY BLOCK. KEPT TOGETHER.</span><span>Your ideas. Your worlds. Your vault.</span></div>
+   <div className="vv-footer-grid">{groups.map(group=><nav key={group.title} aria-label={`${group.title} footer links`}><h2><Icon name={group.icon}/>{group.title}</h2><ul>{group.links.map(([label,to])=><li key={label}><Link to={to} onClick={to==='/explore'?onExplore:undefined}>{label}<Icon name="arrowUpRight"/></Link></li>)}</ul></nav>)}
+    <div className="vv-footer-invite"><span><Icon name="plus"/> YOUR NEXT CHAPTER</span><h2>Make room for<br/>your next idea.</h2><p>Share your world, tell its story, and inspire someone to build.</p><Link to={user?'/create':'/register'}>{user?'Create a post':'Join the community'}<Icon name="arrowUpRight"/></Link></div>
+   </div>
+   <div className="vv-footer-features"><span><Icon name="image"/><span>Every detail<strong>Image galleries</strong></span></span><span><Icon name="lock"/><span>Your own space<strong>Private attachments</strong></span></span><span><Icon name="globe"/><span>Made to inspire<strong>Worlds worth sharing</strong></span></span></div>
+   <div className="vv-footer-bottom"><p>© {new Date().getFullYear()} VoxelVault <span>·</span> Built block by block.</p><p>Images and builds belong to their respective creators.</p><Link to="/" aria-label="Return to VoxelVault home">YOUR CREATIVE ARCHIVE <Icon name="cube"/></Link></div>
+  </div>
+ </footer>;
 }
-
-export default Footer;
