@@ -9,10 +9,10 @@ import {useApi} from '../lib/useApi';
 
 function ImageFeed({category,search,view}) {
   const feed=useImageFeed(category,search,view);const navigate=useNavigate();
-  if(feed.loading)return <div className="pt-6"><ExploreGrid loading rowOrder={view==='posts'}/></div>;
+  if(feed.loading)return <div className="pt-6"><ExploreGrid loading/></div>;
   return <section className="pt-6" aria-label={view==='posts'?'Explore posts':'Explore images'}>
     <p className="mb-6 text-sm text-on-surface-variant">{feed.items.length} {view==='posts'?'posts':'images'} discovered</p>
-    {feed.items.length===0?(!feed.error&&<p className="py-16 text-center text-on-surface-variant">No matching {view==='posts'?'posts':'images'}. Try another category or keyword.</p>):<ExploreGrid rowOrder={view==='posts'} loadingMore={feed.loadingMore} creations={feed.items} onCreationClick={item=>navigate(view==='posts'?'/creations/'+item.id:'/creations/'+item.postId+'?image='+item.imageId)}/>}
+    {feed.items.length===0?(!feed.error&&<p className="py-16 text-center text-on-surface-variant">No matching {view==='posts'?'posts':'images'}. Try another category or keyword.</p>):<ExploreGrid loadingMore={feed.loadingMore} creations={feed.items} onCreationClick={item=>navigate(view==='posts'?'/creations/'+item.id:'/creations/'+item.postId+'?image='+item.imageId)}/>}
     <div className="py-8 text-center" aria-busy={Boolean(feed.loadingMore)}>{feed.loadingMore?<p role="status" className="text-primary">Loading more…</p>:feed.error?<div role="alert"><p>{feed.error}</p><button type="button" onClick={feed.retry} className="mt-3 text-primary">Retry</button></div>:feed.next?<button type="button" onClick={feed.loadMore} className="rounded-full border border-primary/30 px-8 py-3 text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">See more</button>:feed.items.length>0?<p className="text-sm text-on-surface-variant">You have explored every matching {view==='posts'?'post':'image'}. Come back for new creations.</p>:null}</div>
   </section>;
 }
