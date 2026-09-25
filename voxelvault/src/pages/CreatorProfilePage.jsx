@@ -4,7 +4,7 @@ import Icon from '../components/ui/Icon';
 import { notify } from '../lib/notifications';
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import MasonryGrid from "../components/explore/MasonryGrid";
+import ExploreGrid from "../components/explore/ExploreGrid";
 import { useApi } from "../lib/useApi";
 import { usePostList } from "../lib/usePostList";
 import RequestState from "../components/ui/RequestState";
@@ -116,7 +116,7 @@ function CreatorProfilePage({ own = false }) {
 
         <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Filter portfolio">{['all',...new Set(creatorPosts.map(p=>p.category))].map(c=><button type="button" key={c} aria-pressed={category===c} onClick={()=>setCategory(c)} className={category===c?'rounded-full bg-primary px-4 py-2 text-sm text-on-primary':'rounded-full bg-white/5 px-4 py-2 text-sm text-on-surface-variant'}>{c==='all'?'All creations':c}</button>)}</div>
         {creatorPosts.length > 0 ? (
-          <MasonryGrid
+          <ExploreGrid rowOrder loadingMore={posts.loadingMore}
             creations={creatorPosts.filter(p=>category==='all'||p.category===category)}
             onCreationClick={(creation) =>
               navigate(`/creations/${encodeURIComponent(creation.id)}`)

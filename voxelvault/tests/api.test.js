@@ -200,3 +200,47 @@ test('search suggestions expose only public metadata, cap results and treat wild
   assert.equal((await fetch(base+'/api/search/suggestions?q='+ 'a'.repeat(201))).status,400);
  });
 });
+
+test('private image previews require a valid expiring signature; published R2 images stream publicly',async()=>{
+ const db=fakeBackend();const image='55555555-5555-4555-8555-555555555555';
+ db.tables.upload_sessions.push({id:image,owner_id:owner,post_id:null,draft_id:post,kind:'image',status:'ready',provider:'r2',bucket:'attachments',object_key:'private-image',mime_type:'image/png',size_bytes:3});
+ const {createHmac}=await import('node:crypto');const {Readable}=await import('node:stream');let reads=0;
+ const r2={send:async()=>{reads++;return {Body:Readable.from([Buffer.from('png')])};}};
+ await running({db,r2,env:{IMAGE_SIGNING_SECRET:'test-only-secret'}},async base=>{
+  const path=base+'/api/images/'+image;
+  assert.equal((await fetch(path)).status,404);
+  assert.equal((await fetch(path,{headers:{Authorization:'Bearer other'}})).status,404);
+  const expiry=String(Math.floor(Date.now()/1000)+60);
+  const signature=createHmac('sha256','test-only-secret').update(image+':'+expiry).digest('hex');
+  const response=await fetch(path+'?expires='+expiry+'&signature='+signature);
+  assert.equal(response.status,200);assert.equal(await response.text(),'png');assert.equal(response.headers.get('cache-control'),'private, no-store');
+  assert.equal((await fetch(path+'?expires=1000000000&signature='+signature)).status,404);
+  assert.equal(reads,1);
+  db.tables.upload_sessions.at(-1).post_id=post;
+  assert.equal((await fetch(path)).status,200);assert.equal(reads,2);
+ });
+});
+
+test('draft API denies anonymous and foreign-owner reads without exposing payloads',async()=>{
+ const db=fakeBackend();db.tables.drafts=[{id:post,owner_id:owner,payload:{draft:{title:'Private',gallery:[],attachments:[]}},version:1,updated_at:new Date().toISOString()}];
+ await running({db},async base=>{
+  assert.equal((await fetch(base+'/api/me/drafts')).status,401);
+  const headers={Authorization:'Bearer other'};
+  assert.deepEqual(await (await fetch(base+'/api/me/drafts',{headers})).json(),{drafts:[]});
+  assert.equal((await fetch(base+'/api/me/drafts/'+post,{headers})).status,404);
+  const own=await (await fetch(base+'/api/me/drafts/'+post,{headers:{Authorization:'Bearer owner'}})).json();
+  assert.equal(own.draft.draft.title,'Private');
+ });
+});
+
+test('image upload obeys the atomic database provider decision after crossing the image pool limit',async()=>{
+ const db=fakeBackend(),original=db.rpc.bind(db);let stored;
+ db.rpc=async(name,args)=>{const result=await original(name,args);if(name==='reserve_upload'){result.data.provider='r2';result.data.bucket='attachments';}return result;};
+ const r2={send:async command=>{if(command.constructor.name==='PutObjectCommand'){stored=command.input;return {};}if(command.constructor.name==='HeadObjectCommand')return {ContentLength:stored.ContentLength};return {};}};
+ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aV1sAAAAASUVORK5CYII=','base64');
+ await running({db,r2,env:{R2_BUCKET:'test-private'}},async base=>{
+  const response=await fetch(base+'/api/uploads?kind=image&name=one.png',{method:'POST',headers:{Authorization:'Bearer owner'},body:png});
+  assert.equal(response.status,201);const body=await response.json();
+  assert.equal(body.provider,'r2');assert.match(body.src,/\/api\/images\/.+signature=/);assert.equal(db.storageWrites.length,0);assert.equal(stored.Body.length,png.length);
+ });
+});

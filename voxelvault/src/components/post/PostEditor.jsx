@@ -86,10 +86,10 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
   async function keepDraft() {
     setDraftBusy(true);setSaveError('');
     try {
-      await saveDraft(ownerId.current,localDraftId.current,{creation,mode,draft,postId:postId.current});
-      bypass.current=true;notify('Your draft and selected files are saved in this browser.','success','Continue later');
+      const saved=await saveDraft(ownerId.current,localDraftId.current,{creation,mode,draft,postId:postId.current});
+      bypass.current=true;if(saved.synced)notify('Your private draft and files are synced. Continue on any device.','success','Continue later');else notify('Saved on this device only. Cloud sync failed: '+saved.syncError,'info','Draft kept on this device');
       if(pendingLeave)await pendingLeave();else if(blocker.state==='blocked')blocker.proceed();else navigate('/my-posts');
-    }catch(error){setSaveError('Could not save the draft: '+error.message);notify('Draft could not be saved. Stay on this page and try again.','error');}
+    }catch(error){setSaveError('Could not save the draft: '+error.message);notify(error.message,'error','Cloud draft not synced');}
     finally{setDraftBusy(false);}
   }
 
@@ -169,7 +169,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
         version: creation.version ?? 0, images, attachments, externalDownloads: preview.externalDownloads,
       }) });
       bypass.current=true;
-      await deleteDraft(ownerId.current,localDraftId.current).catch(()=>notify('Post saved, but its local draft could not be removed.','info'));
+      await deleteDraft(ownerId.current,localDraftId.current).catch(()=>notify('Post saved, but its draft could not be removed.','info'));
       navigate(`/creations/${postId.current}`);
     } catch (error) { setSaveError(error.message); } finally { setSaving(false); }
   }
@@ -355,8 +355,8 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
 
   return (
     <main className="vault-page-enter mx-auto w-full max-w-[1500px] flex-1 px-6 py-8 lg:px-10">
-      <form onSubmit={handlePreview}>
-        <fieldset disabled={saving} className="min-w-0">
+      <form onSubmit={handlePreview} className={dirty?"pb-32":""}>
+        <fieldset disabled={saving||draftBusy} className="min-w-0">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
             <Link
@@ -381,7 +381,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
             </p>
 
             <p className="mt-2 text-xs text-on-surface-variant">
-              Preview, then publish. Use Finish later to keep a private draft on this browser before closing or refreshing.
+              Preview, then publish. Use Finish later to keep a private draft synced to your account before closing or refreshing.
             </p>
           </div>
 
@@ -513,7 +513,8 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
             {error}
           </p>
         )}
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-primary/5 p-5">
+        {saveError&&!preview&&<p role="alert" className="mt-6 text-red-300">{saveError}</p>}
+        <div className={`vv-editor-actions ${dirty?"vv-editor-actions-fixed":""} mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-primary/5 p-5`}>
           <p className="text-sm text-on-surface-variant"><Icon name="eye" className="mr-2 text-primary"/>Review your showcase before publishing.</p>
           <button type="button" disabled={saving||draftBusy} onClick={keepDraft} className="rounded-full border border-amber-300/30 px-5 py-3 text-sm text-amber-200"><Icon name="save" className="mr-2"/>{draftBusy?'Saving draft…':'Finish later'}</button>
           <button
@@ -610,7 +611,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
               <details className="mt-3 text-xs text-on-surface-variant"><summary className="cursor-pointer">File details</summary><ul className="mt-2 max-h-40 overflow-y-auto space-y-1">{Object.entries(uploadProgress).map(([key,item])=><li key={key} className="break-words">{item.name} · {item.status}</li>)}</ul></details>
             </div>}
             {saveError && <p role="alert" className="mt-4 text-red-300">{saveError}</p>}
-            <button type="button" disabled={saving} onClick={savePost} className="vault-action mt-5 inline-flex items-center gap-3 rounded-full bg-primary px-6 py-3 text-sm text-on-primary disabled:opacity-50">
+            <button type="button" disabled={saving} onClick={savePost} className="vault-action mx-auto mt-7 flex w-fit min-w-56 justify-center items-center gap-3 rounded-full bg-primary px-9 py-4 text-lg text-on-primary disabled:opacity-50">
 
               {!saving&&<Icon name="upload"/>}{saving ? 'Uploading and saving…' : saveError ? 'Retry save' : isCreating ? 'Publish post' : 'Save changes'}
             </button>

@@ -30,7 +30,7 @@ async function makeUser() {
   users.push(user.id);
   const client = createClient(env.SUPABASE_URL, env.VITE_SUPABASE_PUBLISHABLE_KEY, authOptions);
   const { session } = checked(await client.auth.signInWithPassword({ email, password }));
-  return { token: session.access_token, client };
+  return { token: session.access_token, client, async secondSession(){const fresh=createClient(env.SUPABASE_URL,env.VITE_SUPABASE_PUBLISHABLE_KEY,authOptions);return checked(await fresh.auth.signInWithPassword({email,password})).session.access_token;} };
 }
 try {
   const owner = await makeUser();
@@ -38,6 +38,38 @@ try {
   assert.equal((await (await request('/me/storage', owner.token)).json()).usedBytes, 0);
   assert.deepEqual((await (await request('/posts?mine=true', owner.token)).json()).posts, []);
   console.log('PASS new accounts have zero posts and zero usage');
+  const quota=await (await request('/me/storage',owner.token)).json();
+  assert.equal(quota.quotaBytes,250000000);
+  const draftId=randomUUID(),draftPost=randomUUID();
+  const prepare=await (await request('/me/drafts/'+draftId+'/prepare',owner.token,{method:'POST',body:'{}'})).json();
+  assert.equal(prepare.version,0);
+  const draftBytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6XQAAAAASUVORK5CYII=','base64');
+  const draftImage=await (await request('/uploads?kind=image&name=draft.png&draft='+draftId,owner.token,{method:'POST',body:draftBytes},201)).json();
+  const payload={creation:{},mode:'create',postId:draftPost,draft:{title:'Temporary private draft',gallery:[{id:draftImage.id,alt:'draft'}],attachments:[]}};
+  await request('/me/drafts/'+draftId,owner.token,{method:'POST',body:JSON.stringify({version:0,payload})});
+  const secondToken=await owner.secondSession();
+  const restored=(await (await request('/me/drafts/'+draftId,secondToken)).json()).draft;
+  assert.equal(restored.draft.title,payload.draft.title);assert.equal(restored.draft.gallery[0].id,draftImage.id);
+  assert.equal((await fetch(new URL(restored.draft.gallery[0].src,base))).status,200);
+  await request('/images/'+draftImage.id,null,{},404);
+  await request('/me/drafts/'+draftId,other.token,{},404);
+  await request('/me/drafts/'+draftId,owner.token,{method:'POST',body:JSON.stringify({version:0,payload})},409);
+  await request('/me/storage/uploads/'+draftImage.id,owner.token,{method:'DELETE'},409);
+  const breakdown=await (await request('/me/storage/details',owner.token)).json();
+  assert.equal(breakdown.groups.drafts.count,1);
+  await request('/me/drafts/'+draftId,owner.token,{method:'DELETE'});
+  assert.equal((await (await request('/me/storage',owner.token)).json()).usedBytes,0);
+  console.log('PASS 250 MB quota; private draft restored in second session; conflict/deletion protections; draft deletion releases quota');
+  // Reserve test-only image capacity without transferring 50 MB, then verify a real small image routes to R2.
+  const reservation=checked(await db.rpc('reserve_upload',{p_owner:users[0],p_id:randomUUID(),p_name:'temporary-capacity-reservation',p_mime:'image/png',p_size:50000000,p_kind:'image'}));
+  try{
+    const overflow=await (await request('/uploads?kind=image&name=overflow.png',owner.token,{method:'POST',body:draftBytes},201)).json();
+    assert.equal(overflow.provider,'r2');
+    const imageResponse=await fetch(new URL(overflow.src,base));assert.equal(imageResponse.status,200);assert.equal(hash(Buffer.from(await imageResponse.arrayBuffer())),hash(draftBytes));
+    await request('/images/'+overflow.id,null,{},404);
+    await request('/me/storage/uploads/'+overflow.id,owner.token,{method:'DELETE'});
+  }finally{checked(await db.from('upload_sessions').delete().eq('id',reservation.id).eq('owner_id',users[0]));}
+  console.log('PASS real image above the 50 MB image pool uses R2; signed preview preserves bytes and blocks public access');
   const fixtures = [
     { name: 'test.png', kind: 'image', bytes: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6XQAAAAASUVORK5CYII=', 'base64'), provider: 'supabase' },
     { name: 'small.txt', kind: 'attachment', bytes: Buffer.from('VoxelVault private integration test'), provider: 'supabase' },
@@ -57,7 +89,7 @@ try {
   const ownPost = await (await request(`/posts/${id}`, owner.token)).json();
   assert.equal(ownPost.attachments.length, 2);
   assert.equal(ownPost.externalDownloads.length, 1);
-  assert.equal((await fetch(ownPost.image)).status, 200);
+  assert.equal((await fetch(new URL(ownPost.image,base))).status, 200);
   for (const token of [null, other.token]) {
     const post = await (await request(`/posts/${id}`, token)).json();
     assert.equal(post.attachments, undefined);
@@ -109,7 +141,7 @@ try {
     await request('/me/profile',owner.token,{method:'POST',body:JSON.stringify(payload)});
     const updated = await (await request('/me/profile',owner.token)).json();
     assert.equal(updated.name,payload.name); assert.equal(updated.country,'VN'); assert.equal(updated.avatarId,photo.id);
-    assert.equal((await fetch(updated.avatarUrl)).status,200);
+    assert.equal((await fetch(new URL(updated.avatarUrl,base))).status,200);
     const publicProfile = await (await request(`/profiles/${users[0]}`,null)).json();
     assert.equal(publicProfile.email,undefined); assert.equal(publicProfile.avatarUrl,updated.avatarUrl);
     assert.equal(publicProfile.coverUrl,updated.avatarUrl);
@@ -127,6 +159,7 @@ try {
       if (file.provider === 'r2') await r2.send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET, Key: file.object_key }));
       else checked(await db.storage.from(file.bucket).remove([file.object_key]));
     }
+    checked(await db.from('drafts').delete().eq('owner_id',ownerId));
     checked(await db.from('posts').delete().eq('owner_id', ownerId));
     checked(await db.from('upload_sessions').delete().eq('owner_id', ownerId));
     checked(await db.auth.admin.deleteUser(ownerId));

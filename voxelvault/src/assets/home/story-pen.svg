@@ -1,0 +1,298 @@
+<svg class="voxel-drawing-pen-svg" height="100%" viewBox="0 0 200 200" width="100%" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<!-- Gradients -->
+<linearGradient id="penBodyGradMatch" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#34d399"></stop>
+<stop offset="60%" stop-color="#059669"></stop>
+<stop offset="100%" stop-color="#047857"></stop>
+</linearGradient>
+<linearGradient id="penHighlightMatch" x1="0%" x2="100%" y1="0%" y2="0%">
+<stop offset="0%" stop-color="#ffffff" stop-opacity="0.75"></stop>
+<stop offset="100%" stop-color="#ffffff" stop-opacity="0"></stop>
+</linearGradient>
+<linearGradient id="nibGradMatch" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#ecfdf5"></stop>
+<stop offset="100%" stop-color="#a7f3d0"></stop>
+</linearGradient>
+<linearGradient id="strokeGradientMatch" x1="0%" x2="100%" y1="0%" y2="0%">
+<stop offset="0%" stop-color="#059669" stop-opacity="0.3"></stop>
+<stop offset="30%" stop-color="#10b981" stop-opacity="0.9"></stop>
+<stop offset="70%" stop-color="#34d399" stop-opacity="1"></stop>
+<stop offset="100%" stop-color="#a7f3d0" stop-opacity="1"></stop>
+</linearGradient>
+<!-- Soft Radiant Glow Filter -->
+<filter height="160%" id="emeraldGlowMatch" width="160%" x="-30%" y="-30%">
+<feGaussianBlur result="blur" stdDeviation="3.2"></feGaussianBlur>
+<feMerge>
+<feMergeNode in="blur"></feMergeNode>
+<feMergeNode in="SourceGraphic"></feMergeNode>
+</feMerge>
+</filter>
+<radialGradient cx="50%" cy="50%" id="sparkleCoreMatch" r="50%">
+<stop offset="0%" stop-color="#ffffff"></stop>
+<stop offset="45%" stop-color="#6ee7b7" stop-opacity="0.9"></stop>
+<stop offset="100%" stop-color="#10b981" stop-opacity="0"></stop>
+</radialGradient>
+</defs>
+<style><![CDATA[
+  /* 
+    KHỚP TUYỆT ĐỐI GIỮA NÉT VẼ VÀ NGÒI BÚT (PIXEL-PERFECT STROKE & NIB SYNCHRONIZATION):
+    - Quỹ đạo đường vẽ path d="M 36 138 Q 72 108 102 128 T 164 122" có tổng chiều dài đúng 145px (pathLength="145").
+    - Nét vẽ: stroke-dashoffset giảm từ 145 -> 0.
+    - Cây bút: Vị trí ngòi bút (0, 0) di chuyển đúng theo từng điểm của path trên cùng 1 thang thời gian (linear timing giữa các mốc chia nhỏ).
+  */
+
+  .drawn-path-base,
+  .drawn-path-glow {
+    stroke-dasharray: 145;
+    stroke-dashoffset: 145;
+    will-change: stroke-dashoffset, opacity;
+    animation: synchedStroke 2.5s linear infinite;
+  }
+
+  .pen-motion-group {
+    will-change: transform, opacity;
+    animation: synchedPenMotion 2.5s linear infinite;
+    transform-origin: 0px 0px;
+  }
+
+  .nib-sparkle {
+    will-change: transform, opacity;
+    animation: synchedSparkle 2.5s linear infinite;
+    transform-origin: 0 0;
+  }
+
+  .shimmer-star-1 {
+    animation: starPopSynch1 2.5s ease-out infinite;
+  }
+  .shimmer-star-2 {
+    animation: starPopSynch2 2.5s ease-out infinite;
+  }
+  .shimmer-star-3 {
+    animation: starPopSynch3 2.5s ease-out infinite;
+  }
+
+  /* 
+    TIMING CHUẨN XÁC:
+    0% - 10%: Bút bay vào chạm điểm xuất phát (36, 138)
+    10% - 75%: Giai đoạn vẽ liên tục, ngòi bút luôn dính chặt vào đầu nét vẽ!
+      * 10%: xuất phát tại s=0 (36, 138), dashoffset = 145 (0%)
+      * 22%: vẽ chậm ban đầu, s=22px -> (54, 122), dashoffset = 123 (15%)
+      * 36%: qua đỉnh cung 1, s=55px -> (80, 114), dashoffset = 90 (38%)
+      * 48%: qua điểm uốn thung lũng, s=88px -> (104, 128), dashoffset = 57 (61%)
+      * 62%: vút nhanh qua đỉnh dốc 2, s=124px -> (138, 126), dashoffset = 21 (85%)
+      * 75%: chạm đích hoàn thiện, s=145px -> (164, 122), dashoffset = 0 (100%)
+    75% - 88%: Bút nhấc lên tự nhiên khoáng đạt, nét vẽ tỏa sáng chiêm ngưỡng
+    88% - 98%: Mờ dần êm ái (dissolve out)
+    98% - 100%: Lùi về chuẩn bị lặp vòng tiếp theo
+  */
+  @keyframes synchedStroke {
+    0%, 9.9% {
+      stroke-dashoffset: 145;
+      opacity: 0;
+    }
+    10% {
+      stroke-dashoffset: 145;
+      opacity: 1;
+    }
+    22% {
+      stroke-dashoffset: 123;
+      opacity: 1;
+    }
+    36% {
+      stroke-dashoffset: 90;
+      opacity: 1;
+    }
+    48% {
+      stroke-dashoffset: 57;
+      opacity: 1;
+    }
+    62% {
+      stroke-dashoffset: 21;
+      opacity: 1;
+    }
+    75% {
+      stroke-dashoffset: 0;
+      opacity: 1;
+    }
+    87% {
+      stroke-dashoffset: 0;
+      opacity: 1;
+    }
+    97%, 100% {
+      stroke-dashoffset: 0;
+      opacity: 0;
+    }
+  }
+
+  @keyframes synchedPenMotion {
+    0% {
+      transform: translate(22px, 120px) rotate(-16deg) scale(0.9);
+      opacity: 0;
+    }
+    7% {
+      transform: translate(32px, 134px) rotate(-12deg) scale(0.98);
+      opacity: 0.8;
+    }
+    10% {
+      /* Chạm chính xác điểm xuất phát (36, 138) */
+      transform: translate(36px, 138px) rotate(-10deg) scale(1);
+      opacity: 1;
+    }
+    22% {
+      /* Tại đúng s=22px của đường vẽ: (54, 122) */
+      transform: translate(54px, 122px) rotate(2deg) scale(1);
+      opacity: 1;
+    }
+    36% {
+      /* Tại đúng s=55px của đường vẽ: (80, 114) */
+      transform: translate(80px, 114px) rotate(8deg) scale(1.02);
+      opacity: 1;
+    }
+    48% {
+      /* Tại đúng s=88px của đường vẽ: (104, 128) */
+      transform: translate(104px, 128px) rotate(-4deg) scale(1);
+      opacity: 1;
+    }
+    62% {
+      /* Tại đúng s=124px của đường vẽ: (138, 126) */
+      transform: translate(138px, 126px) rotate(4deg) scale(1.02);
+      opacity: 1;
+    }
+    75% {
+      /* Tại đúng đích s=145px: (164, 122) */
+      transform: translate(164px, 122px) rotate(6deg) scale(1.01);
+      opacity: 1;
+    }
+    81% {
+      /* Nhấc bút lên trên tự nhiên sau khi dứt nét */
+      transform: translate(172px, 108px) rotate(14deg) scale(1.03);
+      opacity: 1;
+    }
+    88% {
+      transform: translate(176px, 98px) rotate(20deg) scale(1);
+      opacity: 0.9;
+    }
+    97%, 100% {
+      transform: translate(22px, 120px) rotate(-16deg) scale(0.9);
+      opacity: 0;
+    }
+  }
+
+  @keyframes synchedSparkle {
+    0%, 8% {
+      opacity: 0;
+      transform: scale(0.2);
+    }
+    10% {
+      opacity: 0.85;
+      transform: scale(0.9);
+    }
+    22% {
+      opacity: 0.9;
+      transform: scale(1);
+    }
+    48%, 62% {
+      opacity: 1;
+      transform: scale(1.25);
+    }
+    75% {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    82% {
+      opacity: 0.4;
+      transform: scale(0.6);
+    }
+    90%, 100% {
+      opacity: 0;
+      transform: scale(0.2);
+    }
+  }
+
+  @keyframes starPopSynch1 {
+    0%, 20% { opacity: 0; transform: translate(54px, 122px) scale(0) rotate(0deg); }
+    28% { opacity: 1; transform: translate(54px, 114px) scale(1.2) rotate(40deg); }
+    38% { opacity: 0; transform: translate(54px, 106px) scale(0.3) rotate(80deg); }
+    100% { opacity: 0; }
+  }
+
+  @keyframes starPopSynch2 {
+    0%, 45% { opacity: 0; transform: translate(104px, 128px) scale(0) rotate(0deg); }
+    54% { opacity: 1; transform: translate(104px, 118px) scale(1.3) rotate(-30deg); }
+    64% { opacity: 0; transform: translate(104px, 108px) scale(0.2) rotate(-60deg); }
+    100% { opacity: 0; }
+  }
+
+  @keyframes starPopSynch3 {
+    0%, 72% { opacity: 0; transform: translate(164px, 122px) scale(0) rotate(0deg); }
+    80% { opacity: 1; transform: translate(168px, 110px) scale(1.35) rotate(45deg); }
+    90% { opacity: 0; transform: translate(172px, 100px) scale(0.3) rotate(90deg); }
+    100% { opacity: 0; }
+  }
+@media(prefers-reduced-motion:reduce){*{animation:none!important}.pen-motion-group{transform:translate(102px,128px);opacity:1}.drawn-path-base,.drawn-path-glow{stroke-dashoffset:0;opacity:1}}]]></style>
+<!-- Nền hào quang mờ dịu phía sau -->
+<circle cx="100" cy="120" fill="url(#sparkleCoreMatch)" opacity="0.18" r="75"></circle>
+<!-- Các tia sao mini bung nở dọc hành trình -->
+<g class="shimmer-star-1">
+<path d="M0 -5 Q0 0 -5 0 Q0 0 0 5 Q0 0 5 0 Q0 0 0 -5 Z" fill="#6ee7b7"></path>
+</g>
+<g class="shimmer-star-2">
+<path d="M0 -6 Q0 0 -6 0 Q0 0 0 6 Q0 0 6 0 Q0 0 0 -6 Z" fill="#34d399"></path>
+</g>
+<g class="shimmer-star-3">
+<path d="M0 -5 Q0 0 -5 0 Q0 0 0 5 Q0 0 5 0 Q0 0 0 -5 Z" fill="#a7f3d0"></path>
+</g>
+<!-- 
+  ĐƯỜNG NÉT VẼ ĐƯỢC TÍNH TOÁN ĐỒNG BỘ:
+  d="M 36 138 Q 72 108 102 128 T 164 122" pathLength="145"
+-->
+<!-- 1. Hào quang neon phát sáng của nét vẽ -->
+<path class="drawn-path-glow" d="M 36 138 Q 72 108 102 128 T 164 122" fill="none" filter="url(#emeraldGlowMatch)" opacity="0.55" pathLength="145" stroke="#10b981" stroke-linecap="round" stroke-linejoin="round" stroke-width="7"></path>
+<!-- 2. Nét vẽ sắc nét ngọc bích -->
+<path class="drawn-path-base" d="M 36 138 Q 72 108 102 128 T 164 122" fill="none" pathLength="145" stroke="url(#strokeGradientMatch)" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5"></path>
+<!-- Các điểm neo Voxel tinh tế dọc đường nét -->
+<g opacity="0.85">
+<circle cx="36" cy="138" fill="#a7f3d0" r="2.8"></circle>
+<circle cx="102" cy="128" fill="#34d399" r="2.4"></circle>
+<circle cx="164" cy="122" fill="#ecfdf5" r="2.8"></circle>
+</g>
+<!-- CỤM CÂY BÚT CHUYỂN ĐỘNG (Đầu ngòi bút đặt chính xác tại gốc tọa độ local 0, 0) -->
+<g class="pen-motion-group">
+<!-- Đốm sáng rực rỡ và tia sao ngay tại đầu ngòi bút -->
+<g class="nib-sparkle">
+<circle cx="0" cy="0" fill="url(#sparkleCoreMatch)" r="9"></circle>
+<circle cx="0" cy="0" fill="#ffffff" r="2.6"></circle>
+<!-- Chữ thập ánh sáng kim cương -->
+<line stroke="#ffffff" stroke-linecap="round" stroke-width="1.3" x1="-6" x2="6" y1="0" y2="0"></line>
+<line stroke="#ffffff" stroke-linecap="round" stroke-width="1.3" x1="0" x2="0" y1="-6" y2="6"></line>
+<line stroke="#a7f3d0" stroke-linecap="round" stroke-width="0.8" x1="-3" x2="3" y1="-3" y2="3"></line>
+<line stroke="#a7f3d0" stroke-linecap="round" stroke-width="0.8" x1="3" x2="-3" y1="-3" y2="3"></line>
+</g>
+<!-- Hình học cây bút nghiêng tự nhiên 42 độ -->
+<g transform="rotate(-42)">
+<!-- Đổ bóng nhẹ của thân bút -->
+<path d="M -2 -2 L 2 -2 L 4 -28 L -4 -28 Z" fill="#022c22" opacity="0.35" transform="translate(1, 2)"></path>
+<!-- Ngòi bút kim loại (Nib) chụm về đúng gốc tọa độ (0, 0) -->
+<polygon fill="url(#nibGradMatch)" points="0,0 -4.5,-12 4.5,-12"></polygon>
+<line stroke="#047857" stroke-linecap="round" stroke-width="0.8" x1="0" x2="0" y1="-2" y2="-9"></line>
+<circle cx="0" cy="-8.5" fill="#047857" r="0.9"></circle>
+<!-- Vòng đai cổ bút kim loại sáng bóng -->
+<rect fill="#ecfdf5" height="3.5" rx="1" width="10" x="-5" y="-15.5"></rect>
+<line stroke="#a7f3d0" stroke-width="0.6" x1="-5" x2="5" y1="-14" y2="-14"></line>
+<!-- Thân bút sơn bóng xanh lục bảo -->
+<path d="M -5 -15.5 L -5.5 -54 Q -5.5 -60 0 -62 Q 5.5 -60 5.5 -54 L 5 -15.5 Z" fill="url(#penBodyGradMatch)"></path>
+<!-- Vệt sáng phản quang dọc thân bút -->
+<path d="M -3.8 -16 L -4.2 -53 Q -4.2 -58 -1 -60 L -1 -16 Z" fill="url(#penHighlightMatch)"></path>
+<!-- Huy hiệu khối lập phương Voxel isometric 3D mini đặc trưng -->
+<g transform="translate(0, -36) scale(0.68)">
+<polygon fill="#ecfdf5" opacity="0.95" points="0,-6 5,-3 0,0 -5,-3"></polygon>
+<polygon fill="#34d399" opacity="0.9" points="-5,-3 0,0 0,6 -5,3"></polygon>
+<polygon fill="#059669" opacity="0.9" points="0,0 5,-3 5,3 0,6"></polygon>
+</g>
+<!-- Đuôi bút kim loại vát cong -->
+<ellipse cx="0" cy="-60" fill="#a7f3d0" rx="3.2" ry="1.5"></ellipse>
+<circle cx="0" cy="-61" fill="#ffffff" r="1.5"></circle>
+</g>
+</g>
+</svg>

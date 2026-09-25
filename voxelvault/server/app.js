@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { PutObjectCommand, HeadObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
@@ -38,8 +38,30 @@ function json(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
   res.end(JSON.stringify(body));
 }
-function publicImage(file) {
-  return db.storage.from('showcase').getPublicUrl(file.object_key).data.publicUrl;
+function publicImage(file,preview=false){
+ if(file.bucket==='showcase'||!file.provider)return db.storage.from('showcase').getPublicUrl(file.object_key).data.publicUrl;
+ const path=(env.PUBLIC_API_URL||'')+'/api/images/'+file.id;
+ if(!preview)return path;
+ const expiry=String(Math.floor(Date.now()/1000)+86400);
+ return path+'?expires='+expiry+'&signature='+signImage(file.id,expiry);
+}
+const imageSecret=env.IMAGE_SIGNING_SECRET||env.SUPABASE_SERVICE_ROLE_KEY||randomUUID();
+function signImage(id,expiry){return createHmac('sha256',imageSecret).update(id+':'+expiry).digest('hex');}
+function validImageSignature(id,url){
+ const expiry=url.searchParams.get('expires')||'',signature=url.searchParams.get('signature')||'';
+ if(!/^\d{10}$/.test(expiry)||Number(expiry)<Date.now()/1000||!/^[a-f0-9]{64}$/.test(signature))return false;
+ return timingSafeEqual(Buffer.from(signImage(id,expiry),'hex'),Buffer.from(signature,'hex'));
+}
+async function fileStream(file){
+ if(file.provider==='r2'){if(!r2)throw fail(503,'R2 is not configured');return (await r2.send(new GetObjectCommand({Bucket:env.R2_BUCKET,Key:file.object_key}))).Body;}
+ return Readable.fromWeb(checked(await db.storage.from(file.bucket).download(file.object_key)).stream());
+}
+async function draftResult(row){
+ const files=checked(await db.from('upload_sessions').select('*').eq('draft_id',row.id).eq('owner_id',row.owner_id).eq('status','ready'));
+ const byId=new Map(files.map(f=>[f.id,f])),payload=row.payload;
+ if(!payload.draft)return null;
+ const gallery=(payload.draft.gallery||[]).filter(i=>byId.has(i.id)).map(i=>({...i,src:publicImage(byId.get(i.id),true)}));
+ return {...payload,id:row.owner_id+':'+row.id,draftId:row.id,ownerId:row.owner_id,updatedAt:new Date(row.updated_at).getTime(),cloudVersion:row.version,synced:true,draft:{...payload.draft,gallery,image:gallery[0]?.src||''}};
 }
 async function hydrate(post, owner = false) {
   const profile = await profileFor(post.owner_id);
@@ -66,11 +88,11 @@ async function profileFor(id) {
   let avatarUrl = '';
   let coverUrl = '';
   if (profile.cover_upload_id) {
-    const file = checked(await db.from('upload_sessions').select('object_key').eq('id',profile.cover_upload_id).single());
+    const file = checked(await db.from('upload_sessions').select('*').eq('id',profile.cover_upload_id).single());
     coverUrl = publicImage(file);
   }
   if (profile.avatar_upload_id) {
-    const file = checked(await db.from('upload_sessions').select('object_key').eq('id',profile.avatar_upload_id).single());
+    const file = checked(await db.from('upload_sessions').select('*').eq('id',profile.avatar_upload_id).single());
     avatarUrl = publicImage(file);
   }
   return { id:profile.id, name:profile.name, bio:profile.bio, country:profile.country, version:profile.version,
@@ -98,14 +120,18 @@ async function upload(req, res, user, url) {
   if (activeUploads >= 4) throw fail(429, 'Server busy. Please retry this file.');
   const size = Number(req.headers['content-length']);
   const kind = url.searchParams.get('kind');
-  const provider = storageFor(kind, size);
+  let provider = storageFor(kind, size);
+  const draftId=url.searchParams.get('draft');
+  if(draftId)requireUuid(draftId);
   const name = (url.searchParams.get('name') ?? '').trim();
   if (!name || name.length > 255) throw fail(400, 'Invalid filename');
   if (provider === 'r2' && !r2) throw fail(503, 'R2 is not configured yet');
   activeUploads++;
   let record;
   try {
-    record = checked(await db.rpc('reserve_upload', { p_owner: user.id, p_id: randomUUID(), p_name: name, p_mime: 'application/octet-stream', p_size: size, p_kind: kind }));
+    record = checked(await db.rpc(draftId?'reserve_draft_upload':'reserve_upload', { p_owner: user.id, p_id: randomUUID(), p_name: name, p_mime: 'application/octet-stream', p_size: size, p_kind: kind, ...(draftId?{p_draft:draftId}:{}) }));
+    provider=record.provider;
+    if(provider==='r2'&&!r2)throw fail(503,'R2 is required for this upload but is not configured yet.');
     const bytes = await readBody(req, MAX_BYTES);
     if (bytes.length !== size) throw fail(400, 'File size does not match');
     const detected = await fileTypeFromBuffer(bytes).catch(() => null);
@@ -121,10 +147,10 @@ async function upload(req, res, user, url) {
       if (Number(info.metadata?.size ?? info.size) !== size) throw fail(502, 'Stored size verification failed');
     }
     checked(await db.from('upload_sessions').update({ status: 'ready', mime_type: mime }).eq('id', record.id).eq('status', 'pending').select().single());
-    json(res, 201, { id: record.id, originalName: name, sizeBytes: size, mimeType: mime, typeLabel: mime, status: 'ready', provider, ...(kind === 'image' ? { src: publicImage(record), alt: name } : {}) });
+    json(res, 201, { id: record.id, originalName: name, sizeBytes: size, mimeType: mime, typeLabel: mime, status: 'ready', provider, ...(kind === 'image' ? { src: publicImage(record,true), alt: name } : {}) });
   } catch (error) {
     if (record) {
-      await db.from('upload_sessions').update({ status: 'deleting' }).eq('id', record.id);
+      await db.from('upload_sessions').update({ status: 'deleting', draft_id:null }).eq('id', record.id);
       try { await removeObject(record); } catch { /* Durable row is retried by cleanup. */ }
     }
     throw error;
@@ -145,6 +171,46 @@ const server = http.createServer(async (req, res) => {
     const path = url.pathname;
     if (path === '/api/health') { json(res,200,{ configured, r2Configured: Boolean(r2) }); return; }
     if (!db) throw fail(503, 'Backend not configured. Follow docs/BACKEND_SETUP.md.');
+    if (/^\/api\/images\/[^/]+$/.test(path) && req.method==='GET') {
+      const id=requireUuid(path.split('/').pop());
+      const file=checked(await db.from('upload_sessions').select('*').eq('id',id).eq('status','ready').eq('kind','image').maybeSingle());
+      if(!file)throw fail(404,'Image not found');
+      let published=Boolean(file.post_id);
+      if(!published){const profile=checked(await db.from('profiles').select('avatar_upload_id,cover_upload_id').eq('id',file.owner_id).maybeSingle());published=profile?.avatar_upload_id===id||profile?.cover_upload_id===id;}
+      if(!published&&!validImageSignature(id,url))throw fail(404,'Image not found');
+      const stream=await fileStream(file);
+      res.writeHead(200,{'Content-Type':file.mime_type,'Content-Length':file.size_bytes,'Cache-Control':published?'public, max-age=300':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});
+      await pipeline(stream,res);return;
+    }
+    if(path==='/api/me/drafts'&&req.method==='GET'){
+      const user=await userFor(req,true);
+      const rows=checked(await db.from('drafts').select('*').eq('owner_id',user.id).order('updated_at',{ascending:false}));
+      json(res,200,{drafts:(await Promise.all(rows.map(draftResult))).filter(Boolean)});return;
+    }
+    if(/^\/api\/me\/drafts\/[^/]+(?:\/prepare)?$/.test(path)){
+      const user=await userFor(req,true),id=requireUuid(path.split('/')[4]);
+      if(req.method==='POST'&&path.endsWith('/prepare')){
+        const row=checked(await db.rpc('prepare_draft',{p_owner:user.id,p_id:id}));json(res,200,{version:row.version});return;
+      }
+      if(req.method==='GET'){
+        const row=checked(await db.from('drafts').select('*').eq('id',id).eq('owner_id',user.id).maybeSingle());
+        if(!row)throw fail(404,'Draft not found');json(res,200,{draft:await draftResult(row)});return;
+      }
+      if(req.method==='DELETE'){
+        checked(await db.rpc('delete_draft',{p_owner:user.id,p_id:id}));await cleanup(user.id);json(res,200,{deleted:true});return;
+      }
+      if(req.method==='POST'){
+        const body=await jsonBody(req),payload=body?.payload,draft=payload?.draft;
+        if(!draft||!['create','edit'].includes(payload.mode)||!Number.isInteger(body.version)||body.version<0||!Array.isArray(draft.gallery)||draft.gallery.length>30||!Array.isArray(draft.attachments)||draft.attachments.length>50)throw fail(400,'Invalid draft');
+        requireUuid(payload.postId);
+        const files=[...draft.gallery,...draft.attachments].map(f=>requireUuid(f.id));
+        if(new Set(files).size!==files.length)throw fail(400,'Duplicate draft file');
+        const owned=files.length?checked(await db.from('upload_sessions').select('*').eq('owner_id',user.id).in('id',files)):[];
+        if(owned.length!==files.length||draft.gallery.some(i=>!owned.some(f=>f.id===i.id&&f.kind==='image'))||draft.attachments.some(i=>!owned.some(f=>f.id===i.id&&f.kind==='attachment')))throw fail(400,'Invalid draft media');
+        const row=checked(await db.rpc('save_draft',{p_owner:user.id,p_id:id,p_version:body.version,p_payload:payload,p_files:files}));
+        json(res,200,{draft:await draftResult(row)});return;
+      }
+    }
     if (path === '/api/search/suggestions' && req.method === 'GET') {
       const term=(url.searchParams.get('q')||'').trim();
       if(term.length>200)throw fail(400,'Search is too long');
@@ -159,11 +225,22 @@ const server = http.createServer(async (req, res) => {
       const category=url.searchParams.get('category')||'';
       const search=url.searchParams.get('search')||'';
       if(after.length>80||category.length>80||search.length>200)throw fail(400,'Invalid feed request');
-      const rows=checked(await db.rpc('image_feed',{p_seed:seed,p_after:after,p_category:category,p_search:search,p_limit:31}));
+      const rows=checked(await db.rpc(url.searchParams.get('view')==='posts'?'post_feed':'image_feed',{p_seed:seed,p_after:after,p_category:category,p_search:search,p_limit:31}));
       const page=rows.slice(0,30);
+      if(url.searchParams.get('view')==='posts'){
+        const ids=page.map(row=>row.post_id);
+        const posts=ids.length?checked(await db.from('posts').select('*').in('id',ids)):[];
+        const byId=new Map(posts.map(post=>[post.id,post]));
+        json(res,200,{items:await Promise.all(ids.filter(id=>byId.has(id)).map(id=>hydrate(byId.get(id)))),next:rows.length>30?page.at(-1).sort_key:null});return;
+      }
       const descriptions=page.length?checked(await db.from('posts').select('id,description').in('id',[...new Set(page.map(row=>row.post_id))])):[];
       const byPost=new Map(descriptions.map(post=>[post.id,post.description]));
-      json(res,200,{items:page.map(row=>({id:row.image_id,postId:row.post_id,imageId:row.image_id,title:row.title,description:byPost.get(row.post_id)||'',category:row.category,creator:row.creator,creatorId:row.creator_id,image:publicImage(row),alt:row.alt,creatorAvatar:row.avatar_key?publicImage({object_key:row.avatar_key}):''})),next:rows.length>30?page.at(-1).sort_key:null});return;
+      const imageIds=page.map(row=>row.image_id);
+      const files=imageIds.length?checked(await db.from('upload_sessions').select('*').in('id',imageIds)):[];
+      const byImage=new Map(files.map(f=>[f.id,f]));
+      const profiles=await Promise.all([...new Set(page.map(row=>row.creator_id))].map(id=>profileFor(id)));
+      const avatars=new Map(profiles.map(profile=>[profile.id,profile.avatarUrl]));
+      json(res,200,{items:page.map(row=>({id:row.image_id,postId:row.post_id,imageId:row.image_id,title:row.title,description:byPost.get(row.post_id)||'',category:row.category,creator:row.creator,creatorId:row.creator_id,image:publicImage(byImage.get(row.image_id)||row),alt:row.alt,creatorAvatar:avatars.get(row.creator_id)||''})),next:rows.length>30?page.at(-1).sort_key:null});return;
     }
     if (path === '/api/categories' && req.method === 'GET') {
       const categories=new Set();
@@ -204,12 +281,12 @@ const server = http.createServer(async (req, res) => {
       ]);
       const files=[];
       for(let offset=0;;offset+=1000){
-        const rows=checked(await db.from('upload_sessions').select('id,original_name,size_bytes,kind,provider,status,post_id,created_at,object_key').eq('owner_id',user.id).order('id').range(offset,offset+999));
+        const rows=checked(await db.from('upload_sessions').select('id,original_name,size_bytes,kind,provider,status,post_id,draft_id,bucket,created_at,object_key').eq('owner_id',user.id).order('id').range(offset,offset+999));
         files.push(...rows);if(rows.length<1000)break;
       }
       const report=storageReport(files,profile,account.quota_bytes);
       const byId=new Map(files.map(file=>[file.id,file]));
-      report.items=report.items.map(item=>({...item,previewUrl:item.kind==='image'&&item.provider==='supabase'&&byId.get(item.id).status==='ready'?publicImage(byId.get(item.id)):null}));
+      report.items=report.items.map(item=>({...item,previewUrl:item.kind==='image'&&byId.get(item.id).status==='ready'?publicImage(byId.get(item.id),true):null}));
       json(res,200,report);return;
     }
     if (/^\/api\/me\/storage\/uploads\/[^/]+$/.test(path) && req.method === 'DELETE') {

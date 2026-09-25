@@ -1,7 +1,7 @@
 import {useCallback,useRef,useState} from 'react';
 import {Link} from 'react-router';
 import Icon from '../ui/Icon';
-import HomeImage from './HomeImage';
+import WorldCard from './WorldCard';
 import {CardSkeleton} from '../explore/ExploreCard';
 import {useMotionCycle} from '../../lib/useMotionCycle';
 import {randomPostWave} from '../../lib/randomPostWave';
@@ -13,7 +13,7 @@ function PostWave({posts}){
  const leaving=cycle.progress>.88&&!hover&&!focused&&!paused;
  return <div ref={element} className="vv-wave" style={{'--cycle-state':cycle.active?'running':'paused'}}>
   <div className={`vv-wave-grid ${leaving?'vv-wave-leaving':''}`} onPointerOver={e=>{if(e.pointerType==='mouse')setHover(true);}} onPointerLeave={()=>setHover(false)} onFocus={()=>setFocused(true)} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget))setFocused(false);}}>
-   {wave.posts.map((post,i)=><article key={`${wave.number}-${post.id}`} className="vv-latest-card vv-wave-card" style={{'--slot':i}}><Link to={`/creations/${post.id}`} className="vv-latest-image" aria-label={`View ${post.title}`}><HomeImage key={post.image} src={post.image} alt={post.alt||post.title}/><span className="vv-latest-badge">{post.gallery?.length||1} {(post.gallery?.length||1)===1?'IMAGE':'IMAGES'}</span><span className="vv-wave-open"><Icon name="arrowUpRight"/></span><span className="vv-latest-inspect">View creation <Icon name="arrowUpRight"/></span></Link><div className="vv-latest-copy"><p>{post.category}</p><h3><Link to={`/creations/${post.id}`}>{post.title}</Link></h3><Link className="vv-wave-author" to={`/creators/${post.creatorId}`}>{post.creatorAvatar?<img src={post.creatorAvatar} alt=""/>:<span className="vv-wave-initial">{post.creator?.slice(0,1)}</span>}<span>By <strong>{post.creator}</strong></span><Icon name="chevronRight"/></Link></div></article>)}
+   {wave.posts.map((post,i)=><WorldCard key={`${wave.number}-${post.id}`} post={post} className="vv-wave-card" style={{'--slot':i}}/>)}
   </div>
   <div className="vv-wave-toolbar"><span className="vv-wave-counter">WAVE {String(wave.number).padStart(2,'0')}</span><span className="vv-wave-status">{posts.length<2?'One creation':cycle.reduced?'Reduced motion':paused||hover||focused?'Paused':`Next wave in ${Math.ceil(7*(1-cycle.progress))}s`}</span><span className="vv-wave-progress"><i style={{transform:`scaleX(${cycle.progress})`}}/></span><button type="button" aria-label={paused?'Play card rotation':'Pause card rotation'} aria-pressed={paused} onClick={()=>setPaused(value=>!value)} disabled={cycle.reduced||posts.length<2}>{paused?'▶':'Ⅱ'}</button><button type="button" onClick={()=>{next();cycle.reset();}} disabled={posts.length<2}>Next wave <Icon name="chevronRight"/></button></div>
  </div>;

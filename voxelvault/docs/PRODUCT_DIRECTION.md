@@ -37,7 +37,7 @@ No file contents are read into memory for attachment metadata or exposed as publ
 The preview includes an explicitly private owner summary, not a public download list.
 Publish/Save uploads selected files and saves the post transactionally. Public images
 use Supabase; attachments at most 5 MB use private Supabase, larger attachments up to
-50 MB use private R2 Standard. Quota defaults to 200 MB/account and counts reservations.
+50 MB use private R2 Standard. Quota defaults to 250 MB/account and counts reservations.
 Leaving or refreshing before saving discards the draft; abandoned objects are eligible
 for cleanup after 24 hours. A scheduled cleanup command must be installed on deployment.
 

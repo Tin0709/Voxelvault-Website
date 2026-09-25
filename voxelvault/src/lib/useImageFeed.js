@@ -1,17 +1,17 @@
 import {createId} from './createId';
 import {useEffect,useRef,useState} from 'react';
 import {api} from './api';
-export function useImageFeed(category,search) {
+export function useImageFeed(category,search,view='images') {
   const [seed]=useState(()=>createId());
   const [state,setState]=useState({items:[],next:null,loading:true,error:''});
   const loadingMore=useRef(false);
   const alive=useRef(false);
-  const params=new URLSearchParams({seed,category:category==='all'?'':category,search});
+  const params=new URLSearchParams({seed,view,category:category==='all'?'':category,search});
   const path=`/feed?${params}`;
   useEffect(()=>{alive.current=true;const controller=new AbortController();
-    api(path,{signal:controller.signal}).then(result=>{if(!controller.signal.aborted)setState({...result,loading:false,error:''});}).catch(error=>{if(!controller.signal.aborted)setState({items:[],next:null,loading:false,error:error.message});});
+    api(path,{signal:controller.signal}).then(result=>{if(view==='posts'&&result.items.some(item=>!Array.isArray(item.gallery)))throw new Error('Post view needs the updated backend. Please switch to image view for now.');if(!controller.signal.aborted)setState({...result,loading:false,error:''});}).catch(error=>{if(!controller.signal.aborted)setState({items:[],next:null,loading:false,error:error.message});});
     return()=>{alive.current=false;controller.abort();};
-  },[path]);
+  },[path,view]);
   async function loadMore(){
     if(!state.next||loadingMore.current)return;
     loadingMore.current=true;setState(current=>({...current,loadingMore:true,error:''}));

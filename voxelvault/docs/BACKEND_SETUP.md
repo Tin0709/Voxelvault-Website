@@ -44,7 +44,7 @@ Code đã được chuẩn bị; chưa có kết nối cloud thực tế khi ch�
    không phù hợp gửi email production cho mọi người.
 
 Tài khoản mới được trigger tạo hồ sơ và quota, không tạo bài/file mẫu.
-Quota khởi đầu trong migration là **200 MB/tài khoản**, gồm ảnh, file và upload đang chờ;
+Quota khởi đầu trong migration là **250 MB/tài khoản sau migration 006**, gồm ảnh, file và upload đang chờ;
 đây là cấu hình ban đầu có thể sửa, không phải dung lượng miễn phí nhà cung cấp cấp cho từng user.
 Chỉ người quản trị thay đổi `storage_accounts.quota_bytes` bằng SQL; người dùng không tự tăng quota.
 
@@ -233,12 +233,7 @@ Explore loads individual images automatically; it stops when all matching images
 been shown rather than duplicating a finite collection. Selecting an image changes
 only the initial gallery view, not the published cover.
 
-Unfinished posts are stored in IndexedDB on the current browser, scoped to the signed-in
-account, including selected image and attachment File objects. They appear in My Posts
-with an amber draft style. They are not published or synced across devices. Use Finish
-later before closing/reloading; native browser unload warnings cannot save files for you.
-Clearing site data removes these local drafts. Publishing removes the corresponding
-local draft after the server confirms the post was saved.
+Unfinished drafts are saved privately to the account by Finish later after applying migration 006. Selected files upload to private storage and count against quota. A browser copy remains for connection failures. Cloud saves use a version check to prevent overwriting another device's changes; failed sync is clearly labeled. Publishing removes the corresponding draft after saving the post.
 
 Unused upload review: apply `supabase/migrations/202609230005_unused_upload_deletion.sql`.
 Storage details now includes public image previews, exact bytes and per-file removal.
@@ -264,3 +259,19 @@ Trong Supabase Dashboard → Authentication → URL Configuration → Redirect U
 Ứng dụng đã gửi `redirectTo: window.location.origin + '/login'`. Nếu URL không được cho phép, Supabase có thể dùng Site URL mặc định (thường là localhost). Trên điện thoại localhost là chính điện thoại, nên sẽ báo connection failed. Sau khi lưu, bắt đầu đăng nhập lại từ URL LAN, không dùng lại callback cũ. Khi IP thay đổi cần cập nhật redirect URL.
 
 Google/Facebook vẫn dùng callback HTTPS của dự án Supabase trong cấu hình provider (`https://<project-ref>.supabase.co/auth/v1/callback`), không đổi callback của provider thành IP LAN. Tài liệu: https://supabase.com/docs/guides/auth/redirect-urls
+
+## Update 2026-09-25: drafts, image storage and post feed
+
+Apply in order, after migrations 001–005:
+1. supabase/migrations/202609250006_cloud_drafts_storage.sql
+2. supabase/migrations/202609250007_post_feed.sql
+
+Restart the Node API after both migrations. The combined file docs/APPLY_20260925.sql is provided for SQL Editor (run once).
+
+Every account now has 250,000,000 bytes total. All reserved, ready and pending-deletion uploads count. New images go to Supabase only while their cumulative Supabase image allocation including the incoming file stays at or below 50,000,000 bytes. Further images use R2. Existing images are not moved. The existing per-image limit remains strictly under 5 MB; attachments remain at most 50 MB each.
+
+New images use private storage. The API streams published/profile images publicly; unpublished images require expiring signed preview URLs. Keep R2 private. Legacy showcase URLs continue working. Set PUBLIC_API_URL to your externally reachable API origin only when API and frontend are on different domains; otherwise keep the /api reverse proxy. IMAGE_SIGNING_SECRET is optional and defaults to the server-only Supabase service key; use the same stable secret on all API instances. Never put secrets in VITE variables.
+
+Cloud drafts and files are owner-only. Finish later uploads selected files, then saves the draft. Saved draft files are excluded from orphan cleanup and Delete unused files. Deleting a draft releases its unbound files through normal durable deletion; published files are retained. Abandoned pending uploads become cleanup candidates after 24 hours. Drafts remain until published/deleted. Local-only fallback is labeled and is not available on other devices until a successful cloud save.
+
+Validation: npm run lint, npm run build, npm test. Tests include executing all SQL migrations in PGlite, owner isolation, version conflicts, cleanup protection, 50 MB routing, 250 MB quota, one-post-per-feed-item and signed image access. Live checks require applying migrations and restarting the API.

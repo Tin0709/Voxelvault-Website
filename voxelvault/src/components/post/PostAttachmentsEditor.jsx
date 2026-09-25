@@ -33,7 +33,7 @@ function PostAttachmentsEditor({ attachments, onAdd, onRemove }) {
       <FileDropZone
         label="Choose files — optional"
         prompt="Drag and drop private files here"
-        hint="50 MB per file (50,000,000 bytes). Files upload when you save the post. Up to 5 MB uses Supabase; larger attachments use R2."
+        hint="50 MB per file (50,000,000 bytes). Files upload when you publish or choose Finish later. Up to 5 MB uses Supabase; larger attachments use R2."
         onFiles={selectFiles}
       />
       {rejectedNames.length > 0 && (

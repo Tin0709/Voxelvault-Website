@@ -1,3 +1,5 @@
+import {useSwipe} from '../../lib/useSwipe';
+import HomeImage from '../home/HomeImage';
 import { useRef, useState } from 'react';
 import Icon from '../ui/Icon';
 function Thumbnail({image}) {
@@ -13,9 +15,10 @@ export default function PostGallery({creation}) {
  const index=Math.min(activeIndex,images.length-1);
  const active=images[index];
  function select(next){const value=(next+images.length)%images.length;setActiveIndex(value);const item=strip.current?.children[value];if(item)strip.current.scrollTo({left:item.offsetLeft-strip.current.offsetLeft-(strip.current.clientWidth-item.clientWidth)/2,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});}
+ const swipe=useSwipe(direction=>select(index+direction),{mouse:false});
  return <section aria-label="Creation gallery" className="min-w-0" onKeyDown={e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();select(index+(e.key==='ArrowLeft'?-1:1));}}}>
-  <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/25">
-   <img src={active.src} alt={active.alt||creation.title} className="aspect-[16/10] w-full object-contain"/>
+  <div {...swipe} className="vv-swipe-surface relative overflow-hidden rounded-2xl border border-white/10 bg-black/25">
+   <div key={active.src} className="vv-gallery-main aspect-[16/10] w-full"><HomeImage src={active.src} alt={active.alt||creation.title} priority/></div>
    <span className="absolute left-4 top-4 rounded-full bg-black/60 px-3 py-1 text-xs capitalize text-primary backdrop-blur-md">{creation.category}</span>
    {images.length>1&&<><button type="button" className="vv-gallery-arrow left-3" aria-label="Previous image" onClick={()=>select(index-1)}><Icon name="chevronRight" className="rotate-180"/></button><button type="button" className="vv-gallery-arrow right-3" aria-label="Next image" onClick={()=>select(index+1)}><Icon name="chevronRight"/></button></>}
    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-gradient-to-t from-black/80 to-transparent px-4 pb-4 pt-10"><span aria-live="polite" className="text-xs text-white">View {index+1} / {images.length}</span><a href={active.src} target="_blank" rel="noreferrer" className="rounded-full bg-black/60 px-3 py-2 text-xs text-white">Open original ↗</a></div>

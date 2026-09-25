@@ -1,20 +1,22 @@
-import { useState } from "react";
+import RequestState from './components/ui/RequestState';
+import SiteBackground from './components/ui/SiteBackground';
+import { lazy, Suspense, useState } from "react";
 import { Link, Route, Routes, useLocation, useNavigate } from "react-router";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
-import HomePage from './pages/HomePage';
-import ExplorePage from "./pages/ExplorePage";
-import PostDetailPage from "./pages/PostDetailPage";
-import EditPostPage from "./pages/EditPostPage";
-import CreatePostPage from "./pages/CreatePostPage";
-import MyPostsPage from "./pages/MyPostsPage";
-import AuthPage from "./pages/AuthPage";
-import CreatorProfilePage from "./pages/CreatorProfilePage";
+const HomePage=lazy(()=>import('./pages/HomePage'));
+const ExplorePage=lazy(()=>import('./pages/ExplorePage'));
+const PostDetailPage=lazy(()=>import('./pages/PostDetailPage'));
+const EditPostPage=lazy(()=>import('./pages/EditPostPage'));
+const CreatePostPage=lazy(()=>import('./pages/CreatePostPage'));
+const MyPostsPage=lazy(()=>import('./pages/MyPostsPage'));
+const AuthPage=lazy(()=>import('./pages/AuthPage'));
+const CreatorProfilePage=lazy(()=>import('./pages/CreatorProfilePage'));
 import RequireAuth from "./auth/RequireAuth";
-import ProfileBasicsPage from "./pages/ProfileBasicsPage";
+const ProfileBasicsPage=lazy(()=>import('./pages/ProfileBasicsPage'));
 import Notifications from './components/ui/Notifications';
 import ConfirmHost from './components/ui/ConfirmHost';
-import DraftPage from './pages/DraftPage';
+const DraftPage=lazy(()=>import('./pages/DraftPage'));
 
 function App() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -37,11 +39,11 @@ function App() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background font-body-md text-on-surface">
-      <Header searchQuery={searchQuery} onSearchChange={handleSearchChange} onExplore={resetExplore} />
+    <div className="vv-app flex min-h-screen flex-col font-body-md text-on-surface">
+      <SiteBackground/><Header searchQuery={searchQuery} onSearchChange={handleSearchChange} onExplore={resetExplore} />
       <div key={location.pathname} className="vault-route flex flex-1 flex-col min-w-0">
 
-      <Routes>
+      <Suspense fallback={<RequestState loading/>}><Routes>
         <Route path="/" element={<HomePage />} />
         <Route
           path="/explore"
@@ -80,7 +82,7 @@ function App() {
           element={<AuthPage key="register" mode="register" />}
         />
         <Route path="/creators/:creatorId" element={<CreatorProfilePage />} />
-      </Routes>
+      </Routes></Suspense>
       </div>
       <Notifications />
       <ConfirmHost />

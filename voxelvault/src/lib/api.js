@@ -17,19 +17,19 @@ export async function api(path, options = {}) {
   const body = await response.json().catch(() => ({ error: 'API unavailable. Start the backend server.' }));
   if (!response.ok) {
     if (options.method && options.method !== 'GET') notify(body.error || 'Request failed','error');
-    throw new Error(body.error || 'Request failed');
+    throw Object.assign(new Error(body.error || 'Request failed'),{status:response.status});
   }
   if (options.method === 'DELETE' && path.startsWith('/posts/')) notify('The post and its files have been removed.','success','Post deleted');
   if (options.method === 'POST' && path.startsWith('/posts/')) notify('Your changes are saved and your post is ready to view.','success','Post saved');
   if (options.method === 'POST' && path === '/me/profile') notify('Your profile changes have been saved.','success','Profile updated');
   return body;
 }
-export async function uploadFile(file, kind, onProgress, {silent=false} = {}) {
+export async function uploadFile(file, kind, onProgress, {silent=false,draftId} = {}) {
   if(kind==='image'&&exceedsImageLimit(file))throw new Error('Images must be smaller than 5 MB. Remove this image and select a smaller file.');
   const authHeaders = await headers();
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${base}/api/uploads?kind=${kind}&name=${encodeURIComponent(file.name)}`);
+    xhr.open('POST', `${base}/api/uploads?kind=${kind}&name=${encodeURIComponent(file.name)}${draftId?"&draft="+encodeURIComponent(draftId):""}`);
     for (const [key,value] of Object.entries(authHeaders)) xhr.setRequestHeader(key,value);
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
     xhr.timeout = 300000;

@@ -1,0 +1,4 @@
+import {Link} from 'react-router';
+import PostGallery from '../post/PostGallery';
+import PostCredits from '../post/PostCredits';
+export default function PostFeedCard({post}){return <article className="rounded-2xl border border-white/10 bg-[#111916]/90 p-4 sm:p-6"><div className="mb-5 flex items-center justify-between gap-3"><Link to={'/creators/'+post.creatorId} className="flex items-center gap-3 text-primary">{post.creatorAvatar&&<img src={post.creatorAvatar} alt="" className="h-10 w-10 rounded-full object-cover"/>}{post.creator}</Link><Link to={'/creations/'+post.id} className="text-sm text-primary">Open post ↗</Link></div><h2 className="mb-4 break-words text-2xl">{post.title}</h2><PostGallery creation={post}/><p className="my-5 whitespace-pre-line break-words leading-relaxed text-on-surface-variant">{post.description}</p>{post.minecraftVersion&&<p className="mb-4 text-sm">Minecraft {post.minecraftVersion}</p>}<PostCredits {...post}/></article>;}

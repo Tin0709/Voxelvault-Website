@@ -1,53 +1,14 @@
-import { useNavigate } from "react-router";
-import CreationCard from "../explore/CreationCard";
-import { useApi } from "../../lib/useApi";
-
-function RelatedCreations({ creation }) {
-  const navigate = useNavigate();
-  const { data } = useApi('/posts');
-  const creations = data?.posts ?? [];
-
-  const relatedCreations = creations
-    .filter(
-      (item) => item.id !== creation.id && item.category === creation.category,
-    )
-    .slice(0, 4);
-
-  if (relatedCreations.length === 0) {
-    return null;
-  }
-
-  function openCreation(item) {
-    navigate(`/creations/${encodeURIComponent(item.id)}`);
-  }
-
-  return (
-    <section
-      aria-labelledby="related-creations-heading"
-      className="mt-14 border-t border-white/10 pt-10"
-    >
-      <p className="text-xs uppercase tracking-[0.2em] text-primary">
-        Keep exploring
-      </p>
-
-      <h2
-        id="related-creations-heading"
-        className="mt-3 font-headline-lg text-2xl tracking-tight sm:text-3xl"
-      >
-        More in {creation.category}
-      </h2>
-
-      <p className="mt-3 text-sm text-on-surface-variant">
-        Discover more creations from the same category.
-      </p>
-
-      <div className="mt-7 grid grid-cols-1 items-start gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        {relatedCreations.map((item) => (
-          <CreationCard key={item.id} creation={item} onOpen={openCreation} />
-        ))}
-      </div>
-    </section>
-  );
+import {useMemo} from 'react';
+import WorldCard from '../home/WorldCard';
+import {CardSkeleton} from '../explore/ExploreCard';
+import {useApi} from '../../lib/useApi';
+function choose(posts,creation){
+ const pool=posts.filter(p=>p.id!==creation.id);
+ for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+ return [...pool.filter(p=>p.category===creation.category),...pool.filter(p=>p.category!==creation.category)].slice(0,4);
 }
-
-export default RelatedCreations;
+export default function RelatedCreations({creation}){
+ const {data,loading,error}=useApi('/posts');
+ const posts=useMemo(()=>choose(data?.posts??[],creation),[data,creation]);
+ return <section className="mt-14 border-t border-white/10 pt-10"><p className="text-xs uppercase tracking-[.2em] text-primary">Keep exploring</p><h2 className="mt-3 text-3xl">More worlds to discover</h2><div className="vv-wave-grid mt-7">{loading?Array.from({length:4},(_,i)=><CardSkeleton key={i}/>):posts.map(post=><WorldCard key={post.id} post={post}/>)}</div>{error&&<p role="alert">Suggestions could not load. Please refresh to retry.</p>}{!loading&&!error&&!posts.length&&<p className="mt-4 text-on-surface-variant">More creations will appear here as the community grows.</p>}</section>;
+}
