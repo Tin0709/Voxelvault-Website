@@ -15,14 +15,14 @@ const descriptions={postImages:'Images published with your posts',attachments:'F
 export default function StorageUsage(){
   const [open,setOpen]=useState(false);
   const [revision,setRevision]=useState(0);
-  const summary=useApi(`/me/storage?refresh=${revision}`);
+  const summary=useApi(`/me/storage/details?refresh=${revision}`);
   const [busy,setBusy]=useState(null);
   const [actionError,setActionError]=useState('');
   const [filter,setFilter]=useState('unattached');
   const [batchProgress,setBatchProgress]=useState(null);
   const [resultMessage,setResultMessage]=useState('');
   const operation=useRef(false);
-  const details=useApi(open?`/me/storage/details?refresh=${revision}`:null);
+  const details=summary;
   const dialog=useRef(null);
   useEffect(()=>{if(open)dialog.current?.showModal();else dialog.current?.close();},[open]);
   const data=details.data||summary.data;
@@ -52,15 +52,13 @@ export default function StorageUsage(){
     finally{operation.current=false;setBusy(null);setRevision(n=>n+1);}
   }
   return <>
-    <button type="button" onClick={()=>{setRevision(n=>n+1);setOpen(true);}} className="mt-6 flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-sm text-on-surface-variant transition hover:border-primary/40 hover:bg-primary/5" aria-haspopup="dialog">
-      <span>{summary.error|| (data?`Storage used or reserved: ${formatBytes(data.usedBytes)} / ${formatBytes(data.quotaBytes)}`:'Loading storage usage…')}</span><span className="inline-flex shrink-0 items-center gap-2 text-primary"><span className="hidden sm:inline">View details</span><Icon name="info"/></span>
-    </button>
+    <StorageOverview data={data} error={summary.error} onOpen={()=>{setRevision(n=>n+1);setOpen(true);}}/>
     <dialog onClick={e=>{if(e.target!==e.currentTarget||busy)return;const r=e.currentTarget.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)setOpen(false);}} ref={dialog} className="vault-dialog !w-[min(900px,calc(100%-24px))] !bg-[#111214]" aria-labelledby="storage-title" onCancel={e=>{if(busy)e.preventDefault();else setOpen(false);}}>
 
       <div className="p-5 sm:p-8"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-white/10 pb-5"><div className="flex min-w-0 items-start gap-3"><span className="hidden shrink-0 rounded-xl sm:inline-flex border border-primary/20 bg-primary/5 p-3 text-primary"><Icon name="archive"/></span><div><h2 id="storage-title" className="font-headline-lg text-xl sm:text-2xl">Storage breakdown</h2><p className="mt-1 text-xs text-on-surface-variant">Review your files and make room for new creations.</p></div></div><button autoFocus type="button" disabled={Boolean(busy)} aria-label="Close storage details" onClick={()=>setOpen(false)} className="flex h-11 w-11 shrink-0 items-center justify-center justify-self-end rounded-xl border border-white/15 disabled:opacity-40"><Icon name="close"/></button></div>
         {details.loading?<LoadingState label="Checking your storage…"/>:details.error?<div role="alert" className="mt-5"><p>{details.error}</p><button className="mt-3 text-primary" onClick={()=>setRevision(n=>n+1)}>Retry</button></div>:details.data&&<>
           <div className="my-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs uppercase tracking-widest text-on-surface-variant">Total used or reserved</p><p className="mt-2 font-mono text-3xl">{formatBytes(details.data.usedBytes)} <span className="text-sm text-on-surface-variant">/ {formatBytes(details.data.quotaBytes)}</span></p></div><div className="text-sm"><p className={details.data.usedBytes>=details.data.quotaBytes*.85?'text-amber-300':'text-primary'}>{details.data.quotaBytes?Math.round(details.data.usedBytes/details.data.quotaBytes*100):0}% used</p><p className="mt-1 text-xs text-on-surface-variant">Available: {formatBytes(Math.max(0,details.data.quotaBytes-details.data.usedBytes))}</p></div></div>
-          <div className="flex h-3 overflow-hidden rounded-full bg-white/10" aria-label="Storage allocation">{Object.entries(labels).map(([key,label])=><div key={key} title={`${label}: ${formatBytes(details.data.groups[key].bytes)}`} style={{backgroundColor:colors[key],width:`${details.data.groups[key].bytes/Math.max(1,details.data.quotaBytes,details.data.usedBytes)*100}%`}}/>)}</div>
+          <StorageMeter key={open?"open":"closed"} data={details.data}/>
           <div className="my-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{Object.entries(labels).map(([key,label])=><button type="button" key={key} aria-pressed={filter===key} onClick={()=>setFilter(filter===key?'all':key)} style={{borderColor:filter===key?colors[key]:undefined}} className={`rounded-xl border p-4 text-left transition hover:bg-white/5 ${key==='unattached'?'border-amber-300/25 bg-amber-300/5':'border-white/10 bg-white/[0.03]'}`}><span className="flex items-center justify-between gap-2 text-xs text-on-surface-variant">{label}<span className="h-2 w-2 shrink-0 rounded-full" style={{backgroundColor:colors[key]}}/></span><span style={{color:colors[key]}} className="mt-3 block font-mono text-lg">{formatBytes(details.data.groups[key].bytes)} <span className="text-xs text-on-surface-variant">· {details.data.groups[key].count} files</span></span><span className="mt-2 block text-xs leading-relaxed text-on-surface-variant">{descriptions[key]}</span></button>)}</div>
           {unused.length>0&&<div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/25 bg-amber-300/5 p-4"><div><p className="text-sm text-amber-200">{unused.length} unused files to review</p><p className="mt-1 text-xs text-on-surface-variant">Up to {formatBytes(cleanBytes)} can be released.</p></div><button type="button" disabled={Boolean(busy)} onClick={removeAll} className="inline-flex items-center gap-2 rounded-xl border border-red-300/30 bg-red-300/5 px-4 py-2.5 text-sm text-red-200 disabled:opacity-40"><Icon name="trash"/>Delete all unused files</button></div>}
           {batchProgress!==null&&<div className="mb-4"><ProgressBar label="Cleaning unused files…" value={batchProgress}/></div>}
@@ -85,4 +83,15 @@ function StorageFile({item,busy,remove}){
     {item.previewUrl&&<details className="mt-3"><summary className="cursor-pointer text-sm text-primary">Preview image</summary>{failed?<p className="mt-3 text-sm text-on-surface-variant">Preview unavailable.</p>:<img src={item.previewUrl} alt={item.name} loading="lazy" onLoad={e=>setSize(`${e.currentTarget.naturalWidth} × ${e.currentTarget.naturalHeight} px`)} onError={()=>setFailed(true)} className="mt-3 max-h-64 w-full rounded-xl bg-black/20 object-contain"/>}<a href={item.previewUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-primary">Open original ↗</a></details>}
     {['unattached','deleting'].includes(item.group)&&<button type="button" disabled={Boolean(busy)} onClick={()=>remove(item)} className="mt-3 inline-flex items-center gap-2 rounded-full border border-red-300/30 px-3 py-2 text-xs text-red-300 disabled:opacity-50"><Icon name="trash"/>{busy===item.id?'Deleting…':item.group==='deleting'?'Retry deletion':'Delete unused file'}</button>}
   </li>;
+}
+
+export function StorageMeter({data}){
+ const total=Math.max(1,data.quotaBytes,data.usedBytes);
+ return <span className="vv-storage-meter" role="meter" aria-label="Storage allocation" aria-valuemin={0} aria-valuemax={data.quotaBytes} aria-valuenow={Math.min(data.usedBytes,data.quotaBytes)} aria-valuetext={`${formatBytes(data.usedBytes)} of ${formatBytes(data.quotaBytes)}`}><span className="vv-storage-meter-fill">{Object.entries(labels).map(([key,label])=><span key={key} title={`${label}: ${formatBytes(data.groups[key]?.bytes||0)}`} style={{background:colors[key],width:`${(data.groups[key]?.bytes||0)/total*100}%`}}/>)}</span></span>;
+}
+export function StorageOverview({data,error,onOpen}){
+ return <button type="button" onClick={onOpen} className="vv-storage-card" aria-haspopup="dialog">
+      <span className="vv-storage-card-top"><span className="vv-storage-card-icon"><Icon name="archive"/></span><span className="vv-storage-card-heading"><span><strong>Storage used or reserved</strong>{data&&<small>{(data.usedBytes/Math.max(1,data.quotaBytes)*100).toFixed(1)}% ALLOCATED</small>}</span><span>Review your images, private files and available space.</span></span><span className="vv-storage-card-total">{data?<><strong>{formatBytes(data.usedBytes)}</strong><span> / {formatBytes(data.quotaBytes)}</span></>:error||'Loading storage…'}</span><span className="vv-storage-details">Details <Icon name="info"/></span></span>
+      {data&&<><StorageMeter data={data}/><span className="vv-storage-legend">{Object.entries(labels).filter(([key])=>data.groups[key]?.bytes>0).map(([key,label])=><span key={key}><i style={{background:colors[key]}}/>{key==='unattached'?'Unattached uploads':label}<strong>{formatBytes(data.groups[key].bytes)}</strong></span>)}{data.usedBytes===0&&<span>Your vault is ready for new creations.</span>}</span></>}
+    </button>;
 }
