@@ -275,3 +275,13 @@ New images use private storage. The API streams published/profile images publicl
 Cloud drafts and files are owner-only. Finish later uploads selected files, then saves the draft. Saved draft files are excluded from orphan cleanup and Delete unused files. Deleting a draft releases its unbound files through normal durable deletion; published files are retained. Abandoned pending uploads become cleanup candidates after 24 hours. Drafts remain until published/deleted. Local-only fallback is labeled and is not available on other devices until a successful cloud save.
 
 Validation: npm run lint, npm run build, npm test. Tests include executing all SQL migrations in PGlite, owner isolation, version conflicts, cleanup protection, 50 MB routing, 250 MB quota, one-post-per-feed-item and signed image access. Live checks require applying migrations and restarting the API.
+
+### Verification status — 2026-09-26
+
+Migrations 006 and 007 have been applied through SQL Editor. A read-only query in the actual project confirmed `public.drafts` exists, `post_feed` exists, every storage account has quota 250,000,000 bytes, and no temporary integration-test accounts remain. Do not reapply the combined migration merely to resume testing.
+
+Lint, production build and all 22 local tests pass. Explore now retries a failed initial request without reloading the page or losing its selected view/filter, and does not display an empty-results message alongside a request error. The retry loading state was verified in the browser with View as posts enabled.
+
+Connectivity recovered and `node tests/live-backend.js --run --profiles` completed successfully against the real Supabase and R2 services. Verified: 250 MB quota; private draft restored in a second authenticated session; stale-version and foreign-owner rejection; protected draft files; quota release after deletion; a real image routed to R2 above a test-only 50 MB image reservation; signed image previews and anonymous-access rejection; Supabase/R2 upload and byte-identical downloads/ZIP; post and profile persistence, ownership and cleanup. Both temporary accounts and all their test data were removed. No network settings were changed.
+
+Browser verification with real data: Explore loaded 30 images with See more; View as posts loaded 25 post cards with galleries, descriptions and credits, without an error alert. API and Vite were restarted for this check. Existing images were not migrated.
