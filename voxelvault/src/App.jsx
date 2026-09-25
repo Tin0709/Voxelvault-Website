@@ -23,6 +23,11 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  function resetExplore() {
+    setSearchQuery('');
+    setActiveCategory('all');
+  }
+
   function handleSearchChange(value) {
     setSearchQuery(value);
 
@@ -33,7 +38,7 @@ function App() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-body-md text-on-surface">
-      <Header searchQuery={searchQuery} onSearchChange={handleSearchChange} />
+      <Header searchQuery={searchQuery} onSearchChange={handleSearchChange} onExplore={resetExplore} />
       <div key={location.pathname} className="vault-route flex flex-1 flex-col min-w-0">
 
       <Routes>
