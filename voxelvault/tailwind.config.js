@@ -130,8 +130,13 @@ export default {
       },
 
       fontSize: {
+        xs: ['13px', {lineHeight:'1.5'}],
+        sm: ['15px', {lineHeight:'1.5'}],
+        base: ['17px', {lineHeight:'1.5'}],
+        lg: ['19px', {lineHeight:'1.5'}],
+        xl: ['21px', {lineHeight:'1.4'}],
         "body-md": [
-          "15px",
+          "16px",
           {
             lineHeight: "24px",
             fontWeight: "400",
@@ -139,7 +144,7 @@ export default {
         ],
 
         "body-lg": [
-          "17px",
+          "18px",
           {
             lineHeight: "26px",
             letterSpacing: "-0.005em",
@@ -148,7 +153,7 @@ export default {
         ],
 
         "body-sm": [
-          "13px",
+          "14px",
           {
             lineHeight: "18px",
             letterSpacing: "0.005em",
@@ -184,7 +189,7 @@ export default {
         ],
 
         "label-sm": [
-          "11px",
+          "12px",
           {
             lineHeight: "14px",
             letterSpacing: "0.04em",
@@ -193,7 +198,7 @@ export default {
         ],
 
         "label-md": [
-          "12px",
+          "13px",
           {
             lineHeight: "16px",
             letterSpacing: "0.06em",
