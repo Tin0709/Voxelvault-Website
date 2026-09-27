@@ -280,8 +280,10 @@ async function profileJson(request) {
   } finally { reader?.releaseLock(); }
 }
 
-async function cleanupProfileUploads(db, env, ownerId) {
-  const files = checked(await db.rpc('claim_cleanup', { p_owner: ownerId }));
+async function cleanupProfileUploads(db, env, ownerId, limit) {
+  let claim = db.rpc('claim_cleanup', { p_owner: ownerId });
+  if (limit !== undefined) claim = claim.order('id').limit(limit);
+  const files = checked(await claim);
   for (const file of files) {
     try {
       if (file.provider === 'r2') {
@@ -290,6 +292,29 @@ async function cleanupProfileUploads(db, env, ownerId) {
       } else checked(await db.storage.from(file.bucket).remove([file.object_key]));
       checked(await db.from('upload_sessions').delete().eq('id', file.id).eq('status', 'deleting'));
     } catch { console.error(`Cleanup pending for upload ${file.id}`); }
+  }
+}
+
+const CLEANUP_ACCOUNTS_PER_RUN = 3;
+const CLEANUP_FILES_PER_ACCOUNT = 5;
+
+async function scheduledCleanup(controller, env) {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) throw fail(503, 'Backend not configured');
+  const db = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const result = await db.from('storage_accounts').select('owner_id', { count: 'exact', head: true });
+  checked(result);
+  if (!result.count) return;
+  // Rotate account pages each hour without adding database state. The RPC remains
+  // authoritative for eligibility/expiry; limit bounds returned files, not its SQL updates.
+  const page = Math.floor(controller.scheduledTime / 3_600_000) % Math.ceil(result.count / CLEANUP_ACCOUNTS_PER_RUN);
+  const offset = page * CLEANUP_ACCOUNTS_PER_RUN;
+  const accounts = checked(await db.from('storage_accounts').select('owner_id').order('owner_id')
+    .range(offset, offset + CLEANUP_ACCOUNTS_PER_RUN - 1));
+  for (const account of accounts) {
+    try { await cleanupProfileUploads(db, env, account.owner_id, CLEANUP_FILES_PER_ACCOUNT); }
+    catch { console.error(`Cleanup retry failed for account ${account.owner_id}`); }
   }
 }
 
@@ -401,6 +426,9 @@ async function profileFor(id) {
 }
 
 export default {
+  async scheduled(controller, env, ctx) {
+    await scheduledCleanup(controller, env);
+  },
   async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin');
     const allowedOrigins = new Set([
