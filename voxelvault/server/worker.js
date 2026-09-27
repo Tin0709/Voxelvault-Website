@@ -62,7 +62,20 @@ export default {
           .eq('id', requireUuid(path.split('/').pop())).eq('owner_id', user.id)
           .eq('status', 'ready').maybeSingle());
         if (!file || !file.post_id || file.kind !== 'attachment') throw fail(404, 'File not found');
-        if (file.provider !== 'r2') throw fail(501, 'Supabase Storage downloads are not migrated yet.');
+        if (file.provider !== 'r2') {
+          const result = await db.storage.from(file.bucket).download(file.object_key);
+          if (Number(result.error?.status) === 404 || Number(result.error?.statusCode) === 404 ||
+              ['NoSuchKey', 'not_found'].includes(result.error?.code)) {
+            throw fail(404, 'File not found');
+          }
+          const blob = checked(result);
+          if (!blob) throw fail(404, 'File not found');
+          headers.set('Content-Type', 'application/octet-stream');
+          headers.set('Content-Length', String(file.size_bytes ?? blob.size));
+          headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(file.original_name)}`);
+          headers.set('Cache-Control', 'private, no-store');
+          return new Response(blob.stream(), { headers });
+        }
         if (!env.FILES_BUCKET) throw fail(503, 'R2 not configured');
         const object = await env.FILES_BUCKET.get(file.object_key);
         if (!object) throw fail(404, 'File not found');
