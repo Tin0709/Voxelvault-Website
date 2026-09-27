@@ -439,7 +439,8 @@ export default {
     const uploadRequest = request.method === 'POST' && path === '/api/uploads';
     const currentProfile = path === '/api/me/profile' && ['GET', 'POST'].includes(request.method);
     const postWrite = /^\/api\/posts\/[^/]+$/.test(path) && ['POST', 'DELETE'].includes(request.method);
-    if (!postWrite && !currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
+    const draftDetail = request.method === 'GET' && /^\/api\/me\/drafts\/[^/]+$/.test(path);
+    if (!draftDetail && !postWrite && !currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
       return json({ error: 'Not found' }, 404);
     }
     try {
@@ -450,6 +451,29 @@ export default {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
       if (uploadRequest) return json(await completeUpload(request, db, env), 201);
+      if (draftDetail) {
+        const user = await userFor(request, db);
+        const id = requireUuid(path.split('/')[4]);
+        const row = checked(await db.from('drafts').select('*').eq('id', id).eq('owner_id', user.id).maybeSingle());
+        if (!row) throw fail(404, 'Draft not found');
+        const files = checked(await db.from('upload_sessions').select('*')
+          .eq('draft_id', row.id).eq('owner_id', row.owner_id).eq('status', 'ready'));
+        const byId = new Map(files.map(file => [file.id, file]));
+        const payload = row.payload;
+        if (!payload.draft) return json({ draft: null });
+        const gallery = await Promise.all((payload.draft.gallery || []).filter(item => byId.has(item.id)).map(async item => {
+          const file = byId.get(item.id);
+          const src = file.bucket === 'showcase' || !file.provider
+            ? db.storage.from('showcase').getPublicUrl(file.object_key).data.publicUrl
+            : await uploadPreview(env, file.id);
+          return { ...item, src };
+        }));
+        return json({ draft: {
+          ...payload, id: row.owner_id + ':' + row.id, draftId: row.id, ownerId: row.owner_id,
+          updatedAt: new Date(row.updated_at).getTime(), cloudVersion: row.version, synced: true,
+          draft: { ...payload.draft, gallery, image: gallery[0]?.src || '' },
+        } });
+      }
       if (postWrite) {
         const id = requireUuid(path.split('/').pop());
         const user = await userFor(request, db);
