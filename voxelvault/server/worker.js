@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { fileTypeFromBuffer } from 'file-type';
-import { requireUuid, storageFor, validateUpload } from './validation.js';
+import { requireUuid, storageFor, validateUpload, validatePost } from './validation.js';
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const checked = ({ data, error }) => { if (error) throw error; return data; };
@@ -438,7 +438,8 @@ export default {
     const imageRequest = /^\/api\/images\/[^/]+$/.test(path);
     const uploadRequest = request.method === 'POST' && path === '/api/uploads';
     const currentProfile = path === '/api/me/profile' && ['GET', 'POST'].includes(request.method);
-    if (!currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
+    const postWrite = /^\/api\/posts\/[^/]+$/.test(path) && ['POST', 'DELETE'].includes(request.method);
+    if (!postWrite && !currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
       return json({ error: 'Not found' }, 404);
     }
     try {
@@ -449,6 +450,25 @@ export default {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
       if (uploadRequest) return json(await completeUpload(request, db, env), 201);
+      if (postWrite) {
+        const id = requireUuid(path.split('/').pop());
+        const user = await userFor(request, db);
+        if (request.method === 'POST') {
+          const body = await profileJson(request);
+          const post = validatePost(body);
+          checked(await db.rpc('save_post', {
+            p_owner: user.id, p_id: id, p_version: body.version, p_post: post,
+            p_images: body.images, p_attachments: body.attachments, p_links: body.externalDownloads,
+          }));
+          const response = json({ id });
+          ctx.waitUntil(cleanupProfileUploads(db, env, user.id)
+            .catch(() => console.error('Cleanup will retry on the next scheduled run')));
+          return response;
+        }
+        checked(await db.rpc('delete_post', { p_owner: user.id, p_id: id }));
+        await cleanupProfileUploads(db, env, user.id);
+        return json({ deleted: true });
+      }
       if (browsing || currentProfile) return json(await browse(request, db, env));
       if (imageRequest) {
         const id = requireUuid(path.split('/').pop());
