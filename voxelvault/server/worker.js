@@ -92,6 +92,54 @@ export async function writeR2Upload(env, prepared, body) {
   }
 }
 
+// Internal only: small, non-image uploads prepared by prepareUpload.
+export async function writeSupabaseUpload(db, prepared, body) {
+  const { record, user, size, kind, mime, provider } = prepared;
+  validateUpload(kind, size);
+  if (provider !== 'supabase' || record?.provider !== 'supabase' || record.status !== 'pending' ||
+      !user?.id || record.owner_id !== user.id || record.size_bytes !== size ||
+      !record.bucket || !record.object_key || kind === 'image' ||
+      typeof mime !== 'string' || storageFor(mime, size) !== 'supabase') {
+    throw fail(400, 'Invalid Supabase upload reservation');
+  }
+  if (!body || body.locked || typeof body.getReader !== 'function') throw fail(400, 'Invalid upload body');
+  // Allocate only the validated sub-1 MB size, never the entire untrusted body.
+  const bytes = new Uint8Array(size);
+  const reader = body.getReader();
+  let received = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (!(value instanceof Uint8Array) || received + value.byteLength > size) {
+        throw fail(400, 'File size does not match');
+      }
+      bytes.set(value, received);
+      received += value.byteLength;
+    }
+    if (received !== size) throw fail(400, 'File size does not match');
+  } catch (error) {
+    await reader.cancel(error).catch(() => {});
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+  const storage = db.storage.from(record.bucket);
+  try {
+    checked(await storage.upload(record.object_key, bytes, { contentType: mime, upsert: false }));
+    const info = checked(await storage.info(record.object_key));
+    if (Number(info?.metadata?.size ?? info?.size) !== size) throw fail(502, 'Stored size verification failed');
+    return info;
+  } catch (error) {
+    try {
+      checked(await storage.remove([record.object_key]));
+    } catch {
+      throw Object.assign(fail(503, 'Supabase upload failed; object cleanup must be retried'), { cleanupRequired: true, cause: error });
+    }
+    throw error;
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin');
