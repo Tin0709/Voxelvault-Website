@@ -25,7 +25,7 @@ export async function api(path, options = {}) {
   return body;
 }
 export async function uploadFile(file, kind, onProgress, {silent=false,draftId} = {}) {
-  if(kind==='image'&&exceedsImageLimit(file))throw new Error('Images must be smaller than 5 MB. Remove this image and select a smaller file.');
+  if(kind==='image'&&exceedsImageLimit(file))throw new Error('Files must be at most 50 MB. Remove this image and select a smaller file.');
   const authHeaders = await headers();
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
