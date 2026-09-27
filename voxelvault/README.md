@@ -1,16 +1,17 @@
-# React + Vite
+# VoxelVault
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React/Vite frontend + Node API, Supabase Auth/database/storage và Cloudflare R2.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+`npm ci`, cấu hình `.env.local` và `.env.server.local` theo các file example, rồi chạy `npm run server` và `npm run dev` ở hai terminal.
 
-## React Compiler
+## Kiểm tra
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+`npm run lint`, `npm test`, `npm run build`.
 
-## Expanding the ESLint configuration
+## Production
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+`npm start` phục vụ `dist` cùng `/api`; cần build trước và khai báo biến môi trường server.
+
+Xem [hướng dẫn Render Free](docs/DEPLOY.md) và [cấu hình backend](docs/BACKEND_SETUP.md).

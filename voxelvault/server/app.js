@@ -7,8 +7,9 @@ import { fileTypeFromBuffer } from 'file-type';
 import { MAX_BYTES, requireUuid, storageFor, validatePost } from './validation.js';
 import { streamArchive, safeFilename } from './archive.js';
 import { storageReport } from './storage-report.js';
+import { serveStatic } from './static.js';
 
-export function createApi({ db = null, r2 = null, env = {} } = {}) {
+export function createApi({ db = null, r2 = null, env = {}, staticDir = null } = {}) {
 const configured = Boolean(db);
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const checked = ({ data, error }) => { if (error) throw error; return data; };
@@ -115,9 +116,11 @@ async function cleanup(ownerId) {
 
 // A small per-process concurrency limit keeps bounded upload buffering from exhausting memory.
 let activeUploads = 0;
+const uploadLimit=Number(env.MAX_CONCURRENT_UPLOADS||4);
+if(!Number.isInteger(uploadLimit)||uploadLimit<1||uploadLimit>4)throw new Error('MAX_CONCURRENT_UPLOADS must be an integer from 1 to 4');
 let activeArchives = 0;
 async function upload(req, res, user, url) {
-  if (activeUploads >= 4) throw fail(429, 'Server busy. Please retry this file.');
+  if (activeUploads >= uploadLimit) throw fail(429, 'Server busy. Please retry this file.');
   const size = Number(req.headers['content-length']);
   const kind = url.searchParams.get('kind');
   let provider = storageFor(kind, size);
@@ -169,6 +172,7 @@ const server = http.createServer(async (req, res) => {
     }
     const url = new URL(req.url, 'http://localhost');
     const path = url.pathname;
+    if(staticDir&&path!=='/api'&&!path.startsWith('/api/')){await serveStatic(req,res,staticDir,path);return;}
     if (path === '/api/health') { json(res,200,{ configured, r2Configured: Boolean(r2) }); return; }
     if (!db) throw fail(503, 'Backend not configured. Follow docs/BACKEND_SETUP.md.');
     if (/^\/api\/images\/[^/]+$/.test(path) && req.method==='GET') {
