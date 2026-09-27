@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { requireUuid } from './validation.js';
+import { requireUuid, storageFor, validateUpload } from './validation.js';
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const checked = ({ data, error }) => { if (error) throw error; return data; };
@@ -10,6 +10,46 @@ async function userFor(request, db) {
   const { data, error } = await db.auth.getUser(token);
   if (error || !data.user) throw fail(401, 'Session expired. Please sign in again.');
   return data.user;
+}
+
+// Internal only: Phase 3B-2 must supply MIME detected from bytes, never a client
+// Content-Type/filename. No HTTP route calls this until object storage is ready.
+export async function prepareUpload(request, db, detectedMime) {
+  const user = await userFor(request, db);
+  const url = new URL(request.url);
+  const declaredSize = request.headers.get('Content-Length');
+  const size = declaredSize === null || declaredSize.trim() === '' ? NaN : Number(declaredSize);
+  const kind = url.searchParams.get('kind');
+  validateUpload(kind, size);
+  const draftId = url.searchParams.get('draft');
+  if (draftId) requireUuid(draftId);
+  const name = (url.searchParams.get('name') ?? '').trim();
+  if (!name || name.length > 255) throw fail(400, 'Invalid filename');
+  if (typeof detectedMime !== 'string' || !/^[\w!#$&^.+-]+\/[\w!#$&^.+-]+$/.test(detectedMime)) {
+    throw fail(400, 'Invalid MIME type');
+  }
+  const mime = detectedMime.toLowerCase();
+  if (kind === 'image' && !['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'].includes(mime)) {
+    throw fail(400, 'Invalid or unsupported image');
+  }
+  const provider = storageFor(mime, size);
+  let record = checked(await db.rpc(draftId ? 'reserve_draft_upload' : 'reserve_upload', {
+    p_owner: user.id, p_id: crypto.randomUUID(), p_name: name,
+    p_mime: 'application/octet-stream', p_size: size, p_kind: kind,
+    ...(draftId ? { p_draft: draftId } : {}),
+  }));
+  try {
+    if (record.provider !== provider) {
+      record = checked(await db.from('upload_sessions').update({ provider })
+        .eq('id', record.id).eq('owner_id', user.id).eq('status', 'pending').select().single());
+    }
+  } catch (error) {
+    // No object exists yet; retain a durable cleanup record if preparation fails.
+    await db.from('upload_sessions').update({ status: 'deleting', draft_id: null })
+      .eq('id', record.id).eq('owner_id', user.id).eq('status', 'pending');
+    throw error;
+  }
+  return { user, record, size, kind, name, mime, provider };
 }
 
 export default {
