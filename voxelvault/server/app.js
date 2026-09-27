@@ -123,7 +123,7 @@ async function upload(req, res, user, url) {
   if (activeUploads >= uploadLimit) throw fail(429, 'Server busy. Please retry this file.');
   const size = Number(req.headers['content-length']);
   const kind = url.searchParams.get('kind');
-  let provider = storageFor(kind, size);
+  const provider = storageFor(kind, size);
   const draftId=url.searchParams.get('draft');
   if(draftId)requireUuid(draftId);
   const name = (url.searchParams.get('name') ?? '').trim();
@@ -133,8 +133,8 @@ async function upload(req, res, user, url) {
   let record;
   try {
     record = checked(await db.rpc(draftId?'reserve_draft_upload':'reserve_upload', { p_owner: user.id, p_id: randomUUID(), p_name: name, p_mime: 'application/octet-stream', p_size: size, p_kind: kind, ...(draftId?{p_draft:draftId}:{}) }));
-    provider=record.provider;
-    if(provider==='r2'&&!r2)throw fail(503,'R2 is required for this upload but is not configured yet.');
+    // Persist the centralized routing decision before writing any object; reservation RPCs may use an older policy.
+    if(record.provider!==provider)record=checked(await db.from('upload_sessions').update({provider}).eq('id',record.id).eq('owner_id',user.id).eq('status','pending').select().single());
     const bytes = await readBody(req, MAX_BYTES);
     if (bytes.length !== size) throw fail(400, 'File size does not match');
     const detected = await fileTypeFromBuffer(bytes).catch(() => null);

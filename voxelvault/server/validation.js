@@ -10,7 +10,7 @@ export function storageFor(kind, size) {
     throw Object.assign(new Error('Files must be at most 50 MB'), { status: 400 });
   }
   if (kind === 'image' && size >= SMALL_BYTES) throw Object.assign(new Error('Images must be smaller than 5 MB'), {status:400});
-  return kind === 'image' || size <= SMALL_BYTES ? 'supabase' : 'r2';
+  return kind === 'image' || size >= 1_000_000 ? 'r2' : 'supabase';
 }
 export function httpUrl(value) {
   try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
