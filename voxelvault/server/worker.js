@@ -52,6 +52,46 @@ export async function prepareUpload(request, db, detectedMime) {
   return { user, record, size, kind, name, mime, provider };
 }
 
+// Internal only: consume prepareUpload's result and the original/replayed byte
+// stream. MIME sniffing belongs upstream; this helper never reads a full body.
+export async function writeR2Upload(env, prepared, body) {
+  const { record, user, size, kind, mime, provider } = prepared;
+  validateUpload(kind, size);
+  if (provider !== 'r2' || record?.provider !== 'r2' || record.status !== 'pending' ||
+      !user?.id || record.owner_id !== user.id || record.size_bytes !== size || !record.object_key) {
+    throw fail(400, 'Invalid R2 upload reservation');
+  }
+  if (!env.FILES_BUCKET) throw fail(503, 'R2 is not configured yet');
+  if (!body || body.locked || typeof body.pipeTo !== 'function') throw fail(400, 'Invalid upload body');
+
+  // R2 requires a known-length stream. This enforces the received byte count
+  // with backpressure, including bodies shorter or longer than declared.
+  const fixed = new FixedLengthStream(size);
+  const abort = new AbortController();
+  const transfer = body.pipeTo(fixed.writable, { signal: abort.signal });
+  const write = Promise.resolve().then(() => env.FILES_BUCKET.put(
+    record.object_key, fixed.readable, { httpMetadata: { contentType: mime } },
+  ));
+  try {
+    const [object] = await Promise.all([write, transfer]);
+    // put returns stored metadata, so a separate head request is unnecessary.
+    if (!object || object.size !== size) throw fail(502, 'Stored size verification failed');
+    return object;
+  } catch (error) {
+    abort.abort();
+    // Release backpressure if put failed before consuming the readable side.
+    await fixed.readable.cancel(error).catch(() => {});
+    await Promise.allSettled([transfer, write]);
+    try {
+      await env.FILES_BUCKET.delete(record.object_key);
+    } catch {
+      // The later lifecycle handler must keep the reservation for cleanup retry.
+      throw Object.assign(fail(503, 'R2 upload failed; object cleanup must be retried'), { cleanupRequired: true, cause: error });
+    }
+    throw Object.assign(fail(502, 'R2 upload failed or stored size verification failed'), { cause: error });
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin');
