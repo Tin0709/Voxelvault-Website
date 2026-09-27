@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { fileTypeFromBuffer } from 'file-type';
 import { requireUuid, storageFor, validateUpload } from './validation.js';
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
@@ -12,8 +13,7 @@ async function userFor(request, db) {
   return data.user;
 }
 
-// Internal only: Phase 3B-2 must supply MIME detected from bytes, never a client
-// Content-Type/filename. No HTTP route calls this until object storage is ready.
+// Internal only: MIME must come from bytes, never client Content-Type/filename.
 export async function prepareUpload(request, db, detectedMime) {
   const user = await userFor(request, db);
   const url = new URL(request.url);
@@ -45,8 +45,10 @@ export async function prepareUpload(request, db, detectedMime) {
     }
   } catch (error) {
     // No object exists yet; retain a durable cleanup record if preparation fails.
-    await db.from('upload_sessions').update({ status: 'deleting', draft_id: null })
-      .eq('id', record.id).eq('owner_id', user.id).eq('status', 'pending');
+    try {
+      checked(await db.from('upload_sessions').update({ status: 'deleting', draft_id: null })
+        .eq('id', record.id).eq('owner_id', user.id).eq('status', 'pending'));
+    } catch { console.error('Upload reservation cleanup pending'); }
     throw error;
   }
   return { user, record, size, kind, name, mime, provider };
@@ -140,6 +142,111 @@ export async function writeSupabaseUpload(db, prepared, body) {
   }
 }
 
+// Sniff at most 4100 bytes, retaining only that prefix and any remainder of the
+// last input chunk. Replay with backpressure; never tee or collect the full body.
+async function sniffUpload(body, size) {
+  const reader = (body || new Blob([]).stream()).getReader();
+  const prefix = new Uint8Array(Math.min(4100, size));
+  let used = 0, remainder, ended = false;
+  try {
+    while (used < prefix.length) {
+      const { value, done } = await reader.read();
+      if (done) { ended = true; break; }
+      const take = Math.min(value.byteLength, prefix.length - used);
+      prefix.set(value.subarray(0, take), used);
+      used += take;
+      if (take < value.byteLength) remainder = value.subarray(take);
+    }
+    const detected = await fileTypeFromBuffer(prefix.subarray(0, used)).catch(() => null);
+    let replayPrefix = used > 0, received = 0;
+    const stream = new ReadableStream({
+      async pull(controller) {
+        try {
+          let chunk;
+          if (replayPrefix) { replayPrefix = false; chunk = prefix.subarray(0, used); }
+          else if (remainder) { chunk = remainder; remainder = null; }
+          else if (!ended) {
+            const next = await reader.read();
+            ended = next.done;
+            chunk = next.value;
+          }
+          if (chunk) {
+            received += chunk.byteLength;
+            if (received > size) throw fail(400, 'File size does not match');
+            controller.enqueue(chunk);
+          } else {
+            if (received !== size) throw fail(400, 'File size does not match');
+            reader.releaseLock();
+            controller.close();
+          }
+        } catch (error) {
+          await reader.cancel(error).catch(() => {});
+          reader.releaseLock();
+          controller.error(error);
+        }
+      },
+      async cancel(reason) { try { await reader.cancel(reason); } finally { reader.releaseLock(); } },
+    }, { highWaterMark: 0 });
+    return { mime: detected?.mime ?? 'application/octet-stream', stream };
+  } catch (error) {
+    await reader.cancel(error).catch(() => {});
+    reader.releaseLock();
+    throw error;
+  }
+}
+
+async function uploadPreview(env, id) {
+  const expires = String(Math.floor(Date.now() / 1000) + 86400);
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', encoder.encode(env.IMAGE_SIGNING_SECRET || env.SUPABASE_SERVICE_ROLE_KEY),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = Array.from(new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(id + ':' + expires))),
+    byte => byte.toString(16).padStart(2, '0')).join('');
+  return (env.PUBLIC_API_URL || '') + '/api/images/' + id + '?expires=' + expires + '&signature=' + signature;
+}
+
+async function completeUpload(request, db, env) {
+  await userFor(request, db); // Authenticate before reading any file bytes.
+  const declared = request.headers.get('Content-Length');
+  const size = declared === null || declared.trim() === '' ? NaN : Number(declared);
+  validateUpload(new URL(request.url).searchParams.get('kind'), size);
+  let prepared, replay;
+  try {
+    const sniffed = await sniffUpload(request.body, size);
+    replay = sniffed.stream;
+    prepared = await prepareUpload(request, db, sniffed.mime);
+    const { record, user, kind, name, mime, provider } = prepared;
+    const preview = kind === 'image' ? { src: await uploadPreview(env, record.id), alt: name } : {};
+    if (provider === 'r2') await writeR2Upload(env, prepared, replay);
+    else await writeSupabaseUpload(db, prepared, replay);
+    checked(await db.from('upload_sessions').update({ status: 'ready', mime_type: mime })
+      .eq('id', record.id).eq('owner_id', user.id).eq('status', 'pending').select().single());
+    return { id: record.id, originalName: name, sizeBytes: size, mimeType: mime, typeLabel: mime,
+      status: 'ready', provider, ...preview };
+  } catch (error) {
+    if (replay && !replay.locked) await replay.cancel(error).catch(() => {});
+    if (prepared) {
+      const { record, user, provider } = prepared;
+      // Keep the row until object deletion succeeds, retaining quota for retries.
+      // Cleanup failures must never mask the primary upload error.
+      let marked = false;
+      try {
+        checked(await db.from('upload_sessions').update({ status: 'deleting', draft_id: null })
+          .eq('id', record.id).eq('owner_id', user.id));
+        marked = true;
+      } catch { console.error('Upload cleanup state update pending'); }
+      try {
+        if (provider === 'r2') await env.FILES_BUCKET.delete(record.object_key);
+        else checked(await db.storage.from(record.bucket).remove([record.object_key]));
+        if (marked) checked(await db.from('upload_sessions').delete()
+          .eq('id', record.id).eq('owner_id', user.id).eq('status', 'deleting'));
+      } catch { console.error('Upload object cleanup pending'); }
+    }
+    const primary = error.cleanupRequired && error.cause ? error.cause : error;
+    throw primary.cause?.status === 400 ? primary.cause : primary;
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin');
@@ -174,7 +281,8 @@ export default {
     }
     const path = new URL(request.url).pathname;
     const fileDownload = /^\/api\/files\/[^/]+$/.test(path);
-    if (request.method !== 'GET' || (!fileDownload && !['/api/categories', '/api/me/categories'].includes(path))) {
+    const uploadRequest = request.method === 'POST' && path === '/api/uploads';
+    if (!uploadRequest && (request.method !== 'GET' || (!fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
       return json({ error: 'Not found' }, 404);
     }
     try {
@@ -184,6 +292,7 @@ export default {
       const db = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
+      if (uploadRequest) return json(await completeUpload(request, db, env), 201);
       if (fileDownload) {
         const user = await userFor(request, db);
         const file = checked(await db.from('upload_sessions').select('*')
