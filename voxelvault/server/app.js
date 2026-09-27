@@ -4,7 +4,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { PutObjectCommand, HeadObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { fileTypeFromBuffer } from 'file-type';
-import { MAX_BYTES, requireUuid, storageFor, validatePost } from './validation.js';
+import { MAX_BYTES, requireUuid, storageFor, validateUpload, validatePost } from './validation.js';
 import { streamArchive, safeFilename } from './archive.js';
 import { storageReport } from './storage-report.js';
 import { serveStatic } from './static.js';
@@ -123,23 +123,24 @@ async function upload(req, res, user, url) {
   if (activeUploads >= uploadLimit) throw fail(429, 'Server busy. Please retry this file.');
   const size = Number(req.headers['content-length']);
   const kind = url.searchParams.get('kind');
-  const provider = storageFor(kind, size);
+  validateUpload(kind, size);
   const draftId=url.searchParams.get('draft');
   if(draftId)requireUuid(draftId);
   const name = (url.searchParams.get('name') ?? '').trim();
   if (!name || name.length > 255) throw fail(400, 'Invalid filename');
-  if (provider === 'r2' && !r2) throw fail(503, 'R2 is not configured yet');
   activeUploads++;
   let record;
   try {
     record = checked(await db.rpc(draftId?'reserve_draft_upload':'reserve_upload', { p_owner: user.id, p_id: randomUUID(), p_name: name, p_mime: 'application/octet-stream', p_size: size, p_kind: kind, ...(draftId?{p_draft:draftId}:{}) }));
-    // Persist the centralized routing decision before writing any object; reservation RPCs may use an older policy.
-    if(record.provider!==provider)record=checked(await db.from('upload_sessions').update({provider}).eq('id',record.id).eq('owner_id',user.id).eq('status','pending').select().single());
     const bytes = await readBody(req, MAX_BYTES);
     if (bytes.length !== size) throw fail(400, 'File size does not match');
     const detected = await fileTypeFromBuffer(bytes).catch(() => null);
     const mime = detected?.mime ?? 'application/octet-stream';
     if (kind === 'image' && !['image/jpeg','image/png','image/webp','image/avif','image/gif'].includes(mime)) throw fail(400, 'Invalid or unsupported image');
+    const provider = storageFor(mime, size);
+    if (provider === 'r2' && !r2) throw fail(503, 'R2 is not configured yet');
+    // Persist the centralized routing decision before writing any object; reservation RPCs may use an older policy.
+    if(record.provider!==provider)record=checked(await db.from('upload_sessions').update({provider}).eq('id',record.id).eq('owner_id',user.id).eq('status','pending').select().single());
     if (provider === 'r2') {
       await r2.send(new PutObjectCommand({ Bucket: env.R2_BUCKET, Key: record.object_key, Body: bytes, ContentLength: size, ContentType: mime }));
       const head = await r2.send(new HeadObjectCommand({ Bucket: env.R2_BUCKET, Key: record.object_key }));

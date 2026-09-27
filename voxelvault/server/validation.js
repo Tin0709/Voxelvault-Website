@@ -5,12 +5,13 @@ export function requireUuid(value) {
   if (!uuidPattern.test(value ?? '')) throw Object.assign(new Error('Invalid ID'), { status: 400 });
   return value;
 }
-export function storageFor(kind, size) {
+export function validateUpload(kind, size) {
   if (!['image', 'attachment'].includes(kind) || !Number.isSafeInteger(size) || size < 0 || size > MAX_BYTES) {
     throw Object.assign(new Error('Files must be at most 50 MB'), { status: 400 });
   }
-  if (kind === 'image' && size >= SMALL_BYTES) throw Object.assign(new Error('Images must be smaller than 5 MB'), {status:400});
-  return kind === 'image' || size >= 1_000_000 ? 'r2' : 'supabase';
+}
+export function storageFor(mime, size) {
+  return mime.toLowerCase().startsWith('image/') || size >= 1_000_000 ? 'r2' : 'supabase';
 }
 export function httpUrl(value) {
   try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
