@@ -5,9 +5,9 @@ import { requireUuid, storageFor, validateUpload } from './validation.js';
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const checked = ({ data, error }) => { if (error) throw error; return data; };
 
-async function userFor(request, db) {
+async function userFor(request, db, required = true) {
   const token = request.headers.get('Authorization')?.match(/^Bearer (.+)$/)?.[1];
-  if (!token) throw fail(401, 'Please sign in');
+  if (!token) { if (required) throw fail(401, 'Please sign in'); return null; }
   const { data, error } = await db.auth.getUser(token);
   if (error || !data.user) throw fail(401, 'Session expired. Please sign in again.');
   return data.user;
@@ -208,13 +208,15 @@ async function validImageSignature(env, id, url) {
   return crypto.subtle.verify('HMAC', await imageSigningKey(env), bytes, new TextEncoder().encode(id + ':' + expires));
 }
 
+function imagePath(env, id) { return (env.PUBLIC_API_URL || '') + '/api/images/' + id; }
+
 async function uploadPreview(env, id) {
   const expires = String(Math.floor(Date.now() / 1000) + 86400);
   const encoder = new TextEncoder();
   const key = await imageSigningKey(env);
   const signature = Array.from(new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(id + ':' + expires))),
     byte => byte.toString(16).padStart(2, '0')).join('');
-  return (env.PUBLIC_API_URL || '') + '/api/images/' + id + '?expires=' + expires + '&signature=' + signature;
+  return imagePath(env, id) + '?expires=' + expires + '&signature=' + signature;
 }
 
 async function completeUpload(request, db, env) {
@@ -259,6 +261,95 @@ async function completeUpload(request, db, env) {
   }
 }
 
+// Browsing uses the same published-post tables/RPCs as the Node backend.
+async function browse(request, db, env) {
+  const url = new URL(request.url), path = url.pathname;
+  function publicImage(file) {
+    if (file.bucket === 'showcase' || !file.provider) return db.storage.from('showcase').getPublicUrl(file.object_key).data.publicUrl;
+    return imagePath(env, file.id);
+  }
+async function hydrate(post, owner = false) {
+  const profile = await profileFor(post.owner_id);
+  const images = checked(await db.from('post_images').select('position,alt,upload_sessions(*)').eq('post_id', post.id).order('position'));
+  const gallery = images.map((item) => ({ id: item.upload_sessions.id, src: publicImage(item.upload_sessions), alt: item.alt }));
+  const result = {
+    id: post.id, ownerId: post.owner_id, creatorId: post.owner_id, creator: profile.name, creatorAvatar: profile.avatarUrl,
+    title: post.title, description: post.description, category: post.category, location: post.location,
+    minecraftVersion: post.minecraft_version, revisionNotes: post.revision_notes,
+    originalCreator: post.original_creator, originalSource: post.original_source, creditUrl: post.credit_url,
+    version: post.version, gallery, image: gallery[0]?.src ?? '', alt: gallery[0]?.alt ?? '',
+  };
+  if (owner) {
+    const files = checked(await db.from('attachments').select('upload_sessions(*)').eq('post_id', post.id));
+    result.attachments = files.map(({ upload_sessions: f }) => ({ id: f.id, originalName: f.original_name, sizeBytes: f.size_bytes, mimeType: f.mime_type, typeLabel: f.mime_type, status: 'ready', provider: f.provider }));
+    result.externalDownloads = checked(await db.from('external_downloads').select('id,name,url').eq('post_id', post.id));
+  }
+  return result;
+}
+
+async function profileFor(id) {
+  const profile = checked(await db.from('profiles').select('id,name,bio,country,avatar_upload_id,cover_upload_id,version').eq('id',id).maybeSingle());
+  if (!profile) throw fail(404,'Profile not found');
+  let avatarUrl = '';
+  let coverUrl = '';
+  if (profile.cover_upload_id) {
+    const file = checked(await db.from('upload_sessions').select('*').eq('id',profile.cover_upload_id).single());
+    coverUrl = publicImage(file);
+  }
+  if (profile.avatar_upload_id) {
+    const file = checked(await db.from('upload_sessions').select('*').eq('id',profile.avatar_upload_id).single());
+    avatarUrl = publicImage(file);
+  }
+  return { id:profile.id, name:profile.name, bio:profile.bio, country:profile.country, version:profile.version,
+    avatarId:profile.avatar_upload_id, avatarUrl, coverId:profile.cover_upload_id, coverUrl, handle:profile.id.slice(0,8), initials:profile.name.slice(0,2).toUpperCase() };
+}
+
+    if (path === '/api/feed' && request.method === 'GET') {
+      const seed=requireUuid(url.searchParams.get('seed'));
+      const after=url.searchParams.get('after')||'';
+      const category=url.searchParams.get('category')||'';
+      const search=url.searchParams.get('search')||'';
+      if(after.length>80||category.length>80||search.length>200)throw fail(400,'Invalid feed request');
+      const rows=checked(await db.rpc(url.searchParams.get('view')==='posts'?'post_feed':'image_feed',{p_seed:seed,p_after:after,p_category:category,p_search:search,p_limit:31}));
+      const page=rows.slice(0,30);
+      if(url.searchParams.get('view')==='posts'){
+        const ids=page.map(row=>row.post_id);
+        const posts=ids.length?checked(await db.from('posts').select('*').in('id',ids)):[];
+        const byId=new Map(posts.map(post=>[post.id,post]));
+        return {items:await Promise.all(ids.filter(id=>byId.has(id)).map(id=>hydrate(byId.get(id)))),next:rows.length>30?page.at(-1).sort_key:null};
+      }
+      const descriptions=page.length?checked(await db.from('posts').select('id,description').in('id',[...new Set(page.map(row=>row.post_id))])):[];
+      const byPost=new Map(descriptions.map(post=>[post.id,post.description]));
+      const imageIds=page.map(row=>row.image_id);
+      const files=imageIds.length?checked(await db.from('upload_sessions').select('*').in('id',imageIds)):[];
+      const byImage=new Map(files.map(f=>[f.id,f]));
+      const profiles=await Promise.all([...new Set(page.map(row=>row.creator_id))].map(id=>profileFor(id)));
+      const avatars=new Map(profiles.map(profile=>[profile.id,profile.avatarUrl]));
+      return {items:page.map(row=>({id:row.image_id,postId:row.post_id,imageId:row.image_id,title:row.title,description:byPost.get(row.post_id)||'',category:row.category,creator:row.creator,creatorId:row.creator_id,image:publicImage(byImage.get(row.image_id)||row),alt:row.alt,creatorAvatar:avatars.get(row.creator_id)||''})),next:rows.length>30?page.at(-1).sort_key:null};
+    }
+    if (path === '/api/posts' && request.method === 'GET') {
+      const mine = url.searchParams.get('mine') === 'true';
+      const user = await userFor(request, db, mine);
+      let query = db.from('posts').select('*').order('created_at', { ascending: false });
+      if (mine) query = query.eq('owner_id', user.id);
+      if (url.searchParams.has('creator')) query = query.eq('owner_id', requireUuid(url.searchParams.get('creator')));
+      const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
+      const limit=Math.min(50,Math.max(1,Number(url.searchParams.get('limit'))||50));
+      const posts = checked(await query.range(offset, offset + limit-1));
+      return { posts: await Promise.all(posts.map((p) => hydrate(p, mine))), hasMore: posts.length === limit };
+    }
+    if (/^\/api\/profiles\/[^/]+$/.test(path) && request.method === 'GET') {
+      return await profileFor(requireUuid(path.split('/').pop()));
+    }
+    if (/^\/api\/posts\/[^/]+$/.test(path)) {
+      const id = requireUuid(path.split('/').pop());
+      const user = await userFor(request, db, false);
+      const post = checked(await db.from('posts').select('*').eq('id',id).maybeSingle());
+      if (!post) throw fail(404,'Post not found');
+      return hydrate(post,user?.id === post.owner_id);
+    }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin');
@@ -292,10 +383,11 @@ export default {
       });
     }
     const path = new URL(request.url).pathname;
+    const browsing = path === '/api/feed' || path === '/api/posts' || /^\/api\/(posts|profiles)\/[^/]+$/.test(path);
     const fileDownload = /^\/api\/files\/[^/]+$/.test(path);
     const imageRequest = /^\/api\/images\/[^/]+$/.test(path);
     const uploadRequest = request.method === 'POST' && path === '/api/uploads';
-    if (!uploadRequest && (request.method !== 'GET' || (!imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
+    if (!uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
       return json({ error: 'Not found' }, 404);
     }
     try {
@@ -306,6 +398,7 @@ export default {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
       if (uploadRequest) return json(await completeUpload(request, db, env), 201);
+      if (browsing) return json(await browse(request, db, env));
       if (imageRequest) {
         const id = requireUuid(path.split('/').pop());
         const file = checked(await db.from('upload_sessions').select('*')
