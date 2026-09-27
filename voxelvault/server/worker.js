@@ -261,6 +261,38 @@ async function completeUpload(request, db, env) {
   }
 }
 
+async function profileJson(request) {
+  const reader = request.body?.getReader();
+  const bytes = new Uint8Array(300000);
+  let size = 0;
+  try {
+    if (reader) for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (size + value.byteLength > bytes.length) throw fail(413, 'Request is too large');
+      bytes.set(value, size); size += value.byteLength;
+    }
+    return JSON.parse(new TextDecoder().decode(bytes.subarray(0, size)));
+  } catch (error) {
+    if (reader) await reader.cancel(error).catch(() => {});
+    if (error.status) throw error;
+    throw fail(400, 'Invalid JSON');
+  } finally { reader?.releaseLock(); }
+}
+
+async function cleanupProfileUploads(db, env, ownerId) {
+  const files = checked(await db.rpc('claim_cleanup', { p_owner: ownerId }));
+  for (const file of files) {
+    try {
+      if (file.provider === 'r2') {
+        if (!env.FILES_BUCKET) throw fail(503, 'R2 is not configured');
+        await env.FILES_BUCKET.delete(file.object_key);
+      } else checked(await db.storage.from(file.bucket).remove([file.object_key]));
+      checked(await db.from('upload_sessions').delete().eq('id', file.id).eq('status', 'deleting'));
+    } catch { console.error(`Cleanup pending for upload ${file.id}`); }
+  }
+}
+
 // Browsing uses the same published-post tables/RPCs as the Node backend.
 async function browse(request, db, env) {
   const url = new URL(request.url), path = url.pathname;
@@ -304,6 +336,24 @@ async function profileFor(id) {
     avatarId:profile.avatar_upload_id, avatarUrl, coverId:profile.cover_upload_id, coverUrl, handle:profile.id.slice(0,8), initials:profile.name.slice(0,2).toUpperCase() };
 }
 
+    if (path === '/api/me/profile') {
+      const user = await userFor(request, db);
+      if (request.method === 'POST') {
+        const body = await profileJson(request);
+        if (!body || typeof body.name !== 'string' || !body.name.trim() ||
+            body.name.trim().length > 50 || typeof body.bio !== 'string' || body.bio.length > 1000 ||
+            typeof body.country !== 'string' || !/^([A-Z]{2})?$/.test(body.country) ||
+            !Number.isInteger(body.version) || body.version < 0) throw fail(400, 'Invalid profile');
+        const avatar = body.avatarId === null ? null : requireUuid(body.avatarId);
+        const cover = body.coverId == null ? (await profileFor(user.id)).coverId : requireUuid(body.coverId);
+        checked(await db.rpc('save_profile', {
+          p_owner: user.id, p_name: body.name.trim(), p_bio: body.bio, p_country: body.country,
+          p_avatar: avatar, p_cover: body.coverId === null ? null : cover ?? null, p_version: body.version,
+        }));
+        await cleanupProfileUploads(db, env, user.id);
+      }
+      return { ...await profileFor(user.id), email: user.email };
+    }
     if (path === '/api/feed' && request.method === 'GET') {
       const seed=requireUuid(url.searchParams.get('seed'));
       const after=url.searchParams.get('after')||'';
@@ -387,7 +437,8 @@ export default {
     const fileDownload = /^\/api\/files\/[^/]+$/.test(path);
     const imageRequest = /^\/api\/images\/[^/]+$/.test(path);
     const uploadRequest = request.method === 'POST' && path === '/api/uploads';
-    if (!uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
+    const currentProfile = path === '/api/me/profile' && ['GET', 'POST'].includes(request.method);
+    if (!currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
       return json({ error: 'Not found' }, 404);
     }
     try {
@@ -398,7 +449,7 @@ export default {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
       if (uploadRequest) return json(await completeUpload(request, db, env), 201);
-      if (browsing) return json(await browse(request, db, env));
+      if (browsing || currentProfile) return json(await browse(request, db, env));
       if (imageRequest) {
         const id = requireUuid(path.split('/').pop());
         const file = checked(await db.from('upload_sessions').select('*')
