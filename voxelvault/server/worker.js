@@ -195,11 +195,23 @@ async function sniffUpload(body, size) {
   }
 }
 
+async function imageSigningKey(env) {
+  return crypto.subtle.importKey('raw', new TextEncoder().encode(env.IMAGE_SIGNING_SECRET || env.SUPABASE_SERVICE_ROLE_KEY),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+
+async function validImageSignature(env, id, url) {
+  const expires = url.searchParams.get('expires') || '';
+  const signature = url.searchParams.get('signature') || '';
+  if (!/^\d{10}$/.test(expires) || Number(expires) < Date.now() / 1000 || !/^[a-f0-9]{64}$/.test(signature)) return false;
+  const bytes = Uint8Array.from(signature.match(/../g), hex => parseInt(hex, 16));
+  return crypto.subtle.verify('HMAC', await imageSigningKey(env), bytes, new TextEncoder().encode(id + ':' + expires));
+}
+
 async function uploadPreview(env, id) {
   const expires = String(Math.floor(Date.now() / 1000) + 86400);
   const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey('raw', encoder.encode(env.IMAGE_SIGNING_SECRET || env.SUPABASE_SERVICE_ROLE_KEY),
-    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const key = await imageSigningKey(env);
   const signature = Array.from(new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(id + ':' + expires))),
     byte => byte.toString(16).padStart(2, '0')).join('');
   return (env.PUBLIC_API_URL || '') + '/api/images/' + id + '?expires=' + expires + '&signature=' + signature;
@@ -281,8 +293,9 @@ export default {
     }
     const path = new URL(request.url).pathname;
     const fileDownload = /^\/api\/files\/[^/]+$/.test(path);
+    const imageRequest = /^\/api\/images\/[^/]+$/.test(path);
     const uploadRequest = request.method === 'POST' && path === '/api/uploads';
-    if (!uploadRequest && (request.method !== 'GET' || (!fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
+    if (!uploadRequest && (request.method !== 'GET' || (!imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
       return json({ error: 'Not found' }, 404);
     }
     try {
@@ -293,6 +306,27 @@ export default {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
       if (uploadRequest) return json(await completeUpload(request, db, env), 201);
+      if (imageRequest) {
+        const id = requireUuid(path.split('/').pop());
+        const file = checked(await db.from('upload_sessions').select('*')
+          .eq('id', id).eq('status', 'ready').eq('kind', 'image').maybeSingle());
+        if (!file) throw fail(404, 'Image not found');
+        let published = Boolean(file.post_id);
+        if (!published) {
+          const profile = checked(await db.from('profiles').select('avatar_upload_id,cover_upload_id')
+            .eq('id', file.owner_id).maybeSingle());
+          published = profile?.avatar_upload_id === id || profile?.cover_upload_id === id;
+        }
+        if (!published && !await validImageSignature(env, id, new URL(request.url))) throw fail(404, 'Image not found');
+        if (!env.FILES_BUCKET) throw fail(503, 'R2 is not configured');
+        const object = await env.FILES_BUCKET.get(file.object_key);
+        if (!object) throw fail(404, 'Image not found');
+        headers.set('Content-Type', file.mime_type);
+        headers.set('Content-Length', String(file.size_bytes));
+        headers.set('Cache-Control', published ? 'public, max-age=300' : 'private, no-store');
+        headers.set('Referrer-Policy', 'no-referrer');
+        return new Response(object.body, { headers });
+      }
       if (fileDownload) {
         const user = await userFor(request, db);
         const file = checked(await db.from('upload_sessions').select('*')
