@@ -280,10 +280,11 @@ async function profileJson(request) {
   } finally { reader?.releaseLock(); }
 }
 
-async function cleanupProfileUploads(db, env, ownerId, limit) {
-  let claim = db.rpc('claim_cleanup', { p_owner: ownerId });
-  if (limit !== undefined) claim = claim.order('id').limit(limit);
-  const files = checked(await claim);
+async function cleanupProfileUploads(db, env, ownerId, limit = CLEANUP_FILES_PER_ACCOUNT) {
+  if (!Number.isInteger(limit) || limit <= 0) return;
+  const files = checked(await db.rpc('claim_cleanup', {
+    p_owner: ownerId, p_limit: Math.min(limit, CLEANUP_FILES_PER_ACCOUNT),
+  }));
   for (const file of files) {
     try {
       if (file.provider === 'r2') {
@@ -307,7 +308,7 @@ async function scheduledCleanup(controller, env) {
   checked(result);
   if (!result.count) return;
   // Rotate account pages each hour without adding database state. The RPC remains
-  // authoritative for eligibility/expiry; limit bounds returned files, not its SQL updates.
+  // authoritative for eligibility/expiry and bounds both claims and SQL updates.
   const page = Math.floor(controller.scheduledTime / 3_600_000) % Math.ceil(result.count / CLEANUP_ACCOUNTS_PER_RUN);
   const offset = page * CLEANUP_ACCOUNTS_PER_RUN;
   const accounts = checked(await db.from('storage_accounts').select('owner_id').order('owner_id')
