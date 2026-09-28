@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { fileTypeFromBuffer } from 'file-type';
 import { requireUuid, storageFor, validateUpload, validatePost } from './validation.js';
+import { storageReport } from './storage-report.js';
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const checked = ({ data, error }) => { if (error) throw error; return data; };
@@ -543,7 +544,8 @@ export default {
     const currentProfile = path === '/api/me/profile' && ['GET', 'POST'].includes(request.method);
     const postWrite = /^\/api\/posts\/[^/]+$/.test(path) && ['POST', 'DELETE'].includes(request.method);
     const draftDetail = request.method === 'GET' && /^\/api\/me\/drafts\/[^/]+$/.test(path);
-    if (!draftDetail && !postWrite && !currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
+    const storageRequest = request.method === 'GET' && ['/api/me/storage', '/api/me/storage/details'].includes(path);
+    if (!storageRequest && !draftDetail && !postWrite && !currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
       return json({ error: 'Not found' }, 404);
     }
     try {
@@ -553,6 +555,38 @@ export default {
       const db = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
+      if (storageRequest) {
+        const user = await userFor(request, db);
+        if (path === '/api/me/storage') return json(checked(await db.rpc('storage_usage', { p_owner: user.id })));
+        const [profile, account] = await Promise.all([
+          db.from('profiles').select('avatar_upload_id,cover_upload_id').eq('id', user.id).single().then(checked),
+          db.from('storage_accounts').select('quota_bytes').eq('owner_id', user.id).single().then(checked),
+        ]);
+        // At most 13 external requests including authentication; never return partial totals.
+        const pageSize = 1000, maxPages = 10, files = [];
+        for (let page = 0; page < maxPages; page++) {
+          const result = await db.from('upload_sessions')
+            .select('id,original_name,size_bytes,kind,provider,status,post_id,draft_id,bucket,created_at,object_key', { count: 'exact' })
+            .eq('owner_id', user.id).order('id').range(page * pageSize, (page + 1) * pageSize - 1);
+          const rows = checked(result);
+          if (result.count > pageSize * maxPages) throw fail(503, 'Storage report exceeds the safe reporting limit.');
+          files.push(...rows);
+          if (rows.length < pageSize || (result.count !== null && files.length >= result.count)) break;
+          if (page === maxPages - 1) throw fail(503, 'Storage report exceeds the safe reporting limit.');
+        }
+        const report = storageReport(files, profile, account.quota_bytes);
+        const byId = new Map(files.map(file => [file.id, file]));
+        report.items = await Promise.all(report.items.map(async item => {
+          const file = byId.get(item.id);
+          const previewUrl = item.kind === 'image' && file.status === 'ready'
+            ? file.bucket === 'showcase' || !file.provider
+              ? db.storage.from('showcase').getPublicUrl(file.object_key).data.publicUrl
+              : await uploadPreview(env, item.id)
+            : null;
+          return { ...item, previewUrl };
+        }));
+        return json(report);
+      }
       if (uploadRequest) return json(await completeUpload(request, db, env), 201);
       if (draftDetail) {
         const user = await userFor(request, db);
