@@ -4,18 +4,23 @@
   "main": "server/worker.js",
   "compatibility_date": "2026-09-27",
   "triggers": {
-    "crons": ["0 * * * *"]
+    "crons": ["0 * * * *"],
   },
   "r2_buckets": [
     {
       "binding": "FILES_BUCKET",
-      "bucket_name": "voxelvault-private"
-    }
+      "bucket_name": "voxelvault-private",
+    },
   ],
   "vars": {
+    "SUPABASE_URL": "https://dkopruehxclxdgejgdow.supabase.co",
     "APP_ORIGIN": "http://localhost:5173",
-    "APP_ORIGINS": ""
-  }
+    "APP_ORIGINS": "",
+    "PUBLIC_API_URL": "https://voxelvault-api.2002trungtin.workers.dev",
+  },
+  "secrets": {
+    "required": ["SUPABASE_SERVICE_ROLE_KEY", "IMAGE_SIGNING_SECRET"],
+  },
   // Before deployment, configure the production APP_ORIGIN / APP_ORIGINS.
   // Future non-secret variables: SUPABASE_URL, PUBLIC_API_URL.
   // Set SUPABASE_SERVICE_ROLE_KEY and IMAGE_SIGNING_SECRET with Wrangler secrets.
