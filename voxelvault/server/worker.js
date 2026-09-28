@@ -545,7 +545,8 @@ export default {
     const postWrite = /^\/api\/posts\/[^/]+$/.test(path) && ['POST', 'DELETE'].includes(request.method);
     const draftDetail = request.method === 'GET' && /^\/api\/me\/drafts\/[^/]+$/.test(path);
     const storageRequest = request.method === 'GET' && ['/api/me/storage', '/api/me/storage/details'].includes(path);
-    if (!storageRequest && !draftDetail && !postWrite && !currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
+    const suggestionsRequest = request.method === 'GET' && path === '/api/search/suggestions';
+    if (!suggestionsRequest && !storageRequest && !draftDetail && !postWrite && !currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
       return json({ error: 'Not found' }, 404);
     }
     try {
@@ -555,6 +556,15 @@ export default {
       const db = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
+      if (suggestionsRequest) {
+        const term = (new URL(request.url).searchParams.get('q') || '').trim();
+        if (term.length > 200) throw fail(400, 'Search is too long');
+        if (term.length === 0) return json({ items: [] });
+        const literal = term.replace(/[\\%_]/g, character => '\\' + character);
+        const items = checked(await db.from('posts').select('id,title,category')
+          .ilike('title', '%' + literal + '%').order('created_at', { ascending: false }).limit(6));
+        return json({ items: items.map(({ id, title, category }) => ({ id, title, category })) });
+      }
       if (storageRequest) {
         const user = await userFor(request, db);
         if (path === '/api/me/storage') return json(checked(await db.rpc('storage_usage', { p_owner: user.id })));
