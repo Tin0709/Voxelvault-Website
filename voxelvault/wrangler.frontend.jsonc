@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "voxelvault-website",
+  "name": "voxelvault",
   "compatibility_date": "2026-09-28",
 
   "assets": {

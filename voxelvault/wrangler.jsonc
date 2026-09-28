@@ -14,8 +14,8 @@
   ],
   "vars": {
     "SUPABASE_URL": "https://dkopruehxclxdgejgdow.supabase.co",
-    "APP_ORIGIN": "https://voxelvault-website.2002trungtin.workers.dev",
-    "APP_ORIGINS": "http://localhost:5173",
+    "APP_ORIGIN": "https://voxelvault.2002trungtin.workers.dev",
+    "APP_ORIGINS": "http://localhost:5173,https://voxelvault-website.2002trungtin.workers.dev",
     "PUBLIC_API_URL": "https://voxelvault-api.2002trungtin.workers.dev",
   },
   "secrets": {
