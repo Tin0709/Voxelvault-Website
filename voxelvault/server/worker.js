@@ -2,6 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { fileTypeFromBuffer } from 'file-type';
 import { requireUuid, storageFor, validateUpload, validatePost } from './validation.js';
 import { storageReport } from './storage-report.js';
+import { streamArchive, safeFilename } from './worker-archive.js';
+
+let activeArchives = 0;
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const checked = ({ data, error }) => { if (error) throw error; return data; };
@@ -546,7 +549,8 @@ export default {
     const draftDetail = request.method === 'GET' && /^\/api\/me\/drafts\/[^/]+$/.test(path);
     const storageRequest = request.method === 'GET' && ['/api/me/storage', '/api/me/storage/details'].includes(path);
     const suggestionsRequest = request.method === 'GET' && path === '/api/search/suggestions';
-    if (!suggestionsRequest && !storageRequest && !draftDetail && !postWrite && !currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
+    const archiveRequest = request.method === 'GET' && /^\/api\/posts\/[^/]+\/archive$/.test(path);
+    if (!archiveRequest && !suggestionsRequest && !storageRequest && !draftDetail && !postWrite && !currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
       return json({ error: 'Not found' }, 404);
     }
     try {
@@ -556,6 +560,32 @@ export default {
       const db = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
+      if (archiveRequest) {
+        const user = await userFor(request, db);
+        const post = checked(await db.from('posts').select('id,title')
+          .eq('id', requireUuid(path.split('/')[3])).eq('owner_id', user.id).maybeSingle());
+        if (!post) throw fail(404, 'Post not found');
+        const files = checked(await db.from('upload_sessions').select('*').eq('post_id', post.id)
+          .eq('owner_id', user.id).eq('kind', 'attachment').eq('status', 'ready').order('id'));
+        if (!files.length) throw fail(404, 'No uploaded files to download');
+        if (files.some(file => file.provider === 'r2') && !env.FILES_BUCKET) throw fail(503, 'R2 not configured');
+        if (activeArchives >= 2) throw fail(429, 'Archive service busy. Please try again.');
+        headers.set('Content-Type', 'application/zip');
+        headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(safeFilename(post.title, 'voxelvault-post') + '.zip')}`);
+        headers.set('Cache-Control', 'private, no-store');
+        activeArchives++;
+        try {
+          const body = streamArchive(files, async file => {
+            if (file.provider === 'r2') {
+              const object = await env.FILES_BUCKET.get(file.object_key);
+              if (!object) throw new Error('Archive object not found');
+              return object.body;
+            }
+            return checked(await db.storage.from(file.bucket).download(file.object_key)).stream();
+          }, () => { activeArchives--; });
+          return new Response(body, { headers });
+        } catch (error) { activeArchives--; throw error; }
+      }
       if (suggestionsRequest) {
         const term = (new URL(request.url).searchParams.get('q') || '').trim();
         if (term.length > 200) throw fail(400, 'Search is too long');
