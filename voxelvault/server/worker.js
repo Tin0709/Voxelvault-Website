@@ -443,13 +443,49 @@ async function profileFor(id) {
     if (path === '/api/posts' && request.method === 'GET') {
       const mine = url.searchParams.get('mine') === 'true';
       const user = await userFor(request, db, mine);
-      let query = db.from('posts').select('*').order('created_at', { ascending: false });
+      const relations = '*,post_images(position,alt,upload_sessions(*))' +
+        (mine ? ',attachments(upload_sessions(*)),external_downloads(id,name,url)' : '');
+      let query = db.from('posts').select(relations).order('created_at', { ascending: false });
       if (mine) query = query.eq('owner_id', user.id);
       if (url.searchParams.has('creator')) query = query.eq('owner_id', requireUuid(url.searchParams.get('creator')));
       const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
       const limit=Math.min(50,Math.max(1,Number(url.searchParams.get('limit'))||50));
       const posts = checked(await query.range(offset, offset + limit-1));
-      return { posts: await Promise.all(posts.map((p) => hydrate(p, mine))), hasMore: posts.length === limit };
+      const ownerIds = [...new Set(posts.map(post => post.owner_id))];
+      const profiles = ownerIds.length ? checked(await db.from('profiles')
+        .select('id,name,avatar_upload_id,cover_upload_id').in('id', ownerIds)) : [];
+      const byOwner = new Map(profiles.map(profile => [profile.id, profile]));
+      if (ownerIds.some(id => !byOwner.has(id))) throw fail(404, 'Profile not found');
+      const resourceIds = [...new Set(profiles.flatMap(profile =>
+        [profile.avatar_upload_id, profile.cover_upload_id]).filter(Boolean))];
+      const resources = resourceIds.length ? checked(await db.from('upload_sessions')
+        .select('*').in('id', resourceIds)) : [];
+      const byResource = new Map(resources.map(file => [file.id, file]));
+      if (resourceIds.some(id => !byResource.has(id))) throw new Error('Profile image not found');
+      // As in the feed, embed relations and hydrate from maps without per-post requests.
+      const results = posts.map(post => {
+        const profile = byOwner.get(post.owner_id);
+        const gallery = (post.post_images || []).filter(item => item.upload_sessions)
+          .sort((a, b) => a.position - b.position).map(item => ({
+            id: item.upload_sessions.id, src: publicImage(item.upload_sessions), alt: item.alt,
+          }));
+        const result = {
+          id: post.id, ownerId: post.owner_id, creatorId: post.owner_id, creator: profile.name,
+          creatorAvatar: profile.avatar_upload_id ? publicImage(byResource.get(profile.avatar_upload_id)) : '',
+          title: post.title, description: post.description, category: post.category, location: post.location,
+          minecraftVersion: post.minecraft_version, revisionNotes: post.revision_notes,
+          originalCreator: post.original_creator, originalSource: post.original_source, creditUrl: post.credit_url,
+          version: post.version, gallery, image: gallery[0]?.src ?? '', alt: gallery[0]?.alt ?? '',
+        };
+        if (mine) {
+          result.attachments = (post.attachments || []).filter(item => item.upload_sessions)
+            .map(({ upload_sessions: f }) => ({ id: f.id, originalName: f.original_name,
+              sizeBytes: f.size_bytes, mimeType: f.mime_type, typeLabel: f.mime_type, status: 'ready', provider: f.provider }));
+          result.externalDownloads = post.external_downloads || [];
+        }
+        return result;
+      });
+      return { posts: results, hasMore: posts.length === limit };
     }
     if (/^\/api\/profiles\/[^/]+$/.test(path) && request.method === 'GET') {
       return await profileFor(requireUuid(path.split('/').pop()));
