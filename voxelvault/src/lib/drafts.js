@@ -26,20 +26,32 @@ export async function saveDraft(ownerId,id,payload){
   const prepared=await api('/me/drafts/'+id+'/prepare',{method:'POST',body:'{}'});
   const version=previous?.cloudVersion??0;
   if(prepared.version!==version)throw new Error('This draft changed on another device. Open it again before saving. Your edits remain on this browser.');
-  async function media(items,kind){
-   const result=[];
-   for(const item of items){
-    // Cache each successful upload locally so retrying a cloud save does not duplicate it.
-    let next=item;
-    const cached=(previous?.draft?.[kind==='image'?'gallery':'attachments']||[]).find(f=>f.localKey===(item.localKey||item.src||item.id)&&!f.file);
-    if(item.file){const uploaded=cached||await uploadFile(item.file,kind,()=>{},{silent:true,draftId:id});next={...item,...uploaded,localKey:item.localKey||item.src||item.id};delete next.file;}
-    result.push(next);
-    row={...row,draft:{...row.draft,[kind==='image'?'gallery':'attachments']:[...result,...items.slice(result.length)]}};
-    await localPut(row);
+  const tasks=[...payload.draft.gallery.map((item,index)=>({item,index,field:'gallery',kind:'image'})),
+   ...payload.draft.attachments.map((item,index)=>({item,index,field:'attachments',kind:'attachment'}))];
+  let cursor=0,failed=false,failure,persistTail=Promise.resolve();
+  async function syncMedia(){
+   while(!failed&&cursor<tasks.length){
+    const {item,index,field,kind}=tasks[cursor++];
+    try{
+     let next=item;
+     const cached=(previous?.draft?.[field]||[]).find(f=>f.localKey===(item.localKey||item.src||item.id)&&!f.file);
+     if(item.file){const uploaded=cached||await uploadFile(item.file,kind,()=>{},{silent:true,draftId:id});next={...item,...uploaded,localKey:item.localKey||item.src||item.id};delete next.file;}
+     const items=[...row.draft[field]];items[index]=next;
+     row={...row,draft:{...row.draft,[field]:items}};
+     // Serialize immutable checkpoints so a slower write cannot overwrite a
+     // later completion. Every successful upload remains cached for retries.
+     const snapshot=row;
+     const persist=persistTail.then(()=>localPut(snapshot));
+     persistTail=persist.catch(()=>{});
+     await persist;
+    }catch(error){if(!failed){failed=true;failure=error;}}
    }
-   return result;
   }
-  const gallery=await media(payload.draft.gallery,'image');const attachments=await media(payload.draft.attachments,'attachment');
+  // Settle in-flight uploads/checkpoints before reporting failure or saving the
+  // cloud draft. Never leave workers mutating local state after saveDraft returns.
+  await Promise.all(Array.from({length:Math.min(3,tasks.length)},()=>syncMedia()));
+  if(failed)throw failure;
+  const {gallery,attachments}=row.draft;
   const clean={...payload,draft:{...payload.draft,gallery,attachments,image:gallery[0]?.src||''}};
   const response=await api('/me/drafts/'+id,{method:'POST',body:JSON.stringify({version,payload:clean})});
   await localPut(response.draft);return response.draft;
