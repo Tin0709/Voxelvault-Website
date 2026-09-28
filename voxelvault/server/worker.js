@@ -546,7 +546,9 @@ export default {
     const uploadRequest = request.method === 'POST' && path === '/api/uploads';
     const currentProfile = path === '/api/me/profile' && ['GET', 'POST'].includes(request.method);
     const postWrite = /^\/api\/posts\/[^/]+$/.test(path) && ['POST', 'DELETE'].includes(request.method);
-    const draftDetail = request.method === 'GET' && /^\/api\/me\/drafts\/[^/]+$/.test(path);
+    const draftDetail = (path === '/api/me/drafts' && request.method === 'GET') ||
+      (/^\/api\/me\/drafts\/[^/]+$/.test(path) && ['GET', 'POST', 'DELETE'].includes(request.method)) ||
+      (/^\/api\/me\/drafts\/[^/]+\/prepare$/.test(path) && request.method === 'POST');
     const storageRequest = request.method === 'GET' && ['/api/me/storage', '/api/me/storage/details'].includes(path);
     const suggestionsRequest = request.method === 'GET' && path === '/api/search/suggestions';
     const archiveRequest = request.method === 'GET' && /^\/api\/posts\/[^/]+\/archive$/.test(path);
@@ -630,26 +632,57 @@ export default {
       if (uploadRequest) return json(await completeUpload(request, db, env), 201);
       if (draftDetail) {
         const user = await userFor(request, db);
+        async function draftResult(row, joinedFiles) {
+          const files = joinedFiles ?? checked(await db.from('upload_sessions').select('*')
+            .eq('draft_id', row.id).eq('owner_id', row.owner_id).eq('status', 'ready'));
+          const byId = new Map(files.filter(file => file.owner_id === user.id &&
+            file.draft_id === row.id && file.status === 'ready').map(file => [file.id, file]));
+          const payload = row.payload;
+          if (!payload.draft) return null;
+          const gallery = await Promise.all((payload.draft.gallery || []).filter(item => byId.has(item.id)).map(async item => {
+            const file = byId.get(item.id);
+            const src = file.bucket === 'showcase' || !file.provider
+              ? db.storage.from('showcase').getPublicUrl(file.object_key).data.publicUrl
+              : await uploadPreview(env, file.id);
+            return { ...item, src };
+          }));
+          return {
+            ...payload, id: row.owner_id + ':' + row.id, draftId: row.id, ownerId: row.owner_id,
+            updatedAt: new Date(row.updated_at).getTime(), cloudVersion: row.version, synced: true,
+            draft: { ...payload.draft, gallery, image: gallery[0]?.src || '' },
+          };
+        }
+        if (path === '/api/me/drafts') {
+          const rows = checked(await db.from('drafts').select('*,upload_sessions(*)')
+            .eq('owner_id', user.id).order('updated_at', { ascending: false }));
+          return json({ drafts: (await Promise.all(rows.map(row => draftResult(row, row.upload_sessions)))).filter(Boolean) });
+        }
         const id = requireUuid(path.split('/')[4]);
+        if (request.method === 'POST' && path.endsWith('/prepare')) {
+          const row = checked(await db.rpc('prepare_draft', { p_owner: user.id, p_id: id }));
+          return json({ version: row.version });
+        }
+        if (request.method === 'DELETE') {
+          checked(await db.rpc('delete_draft', { p_owner: user.id, p_id: id }));
+          await cleanupProfileUploads(db, env, user.id);
+          return json({ deleted: true });
+        }
+        if (request.method === 'POST') {
+          const body = await profileJson(request), payload = body?.payload, draft = payload?.draft;
+          if (!draft || !['create', 'edit'].includes(payload.mode) || !Number.isInteger(body.version) || body.version < 0 ||
+              !Array.isArray(draft.gallery) || draft.gallery.length > 30 || !Array.isArray(draft.attachments) || draft.attachments.length > 50) throw fail(400, 'Invalid draft');
+          requireUuid(payload.postId);
+          const files = [...draft.gallery, ...draft.attachments].map(file => requireUuid(file.id));
+          if (new Set(files).size !== files.length) throw fail(400, 'Duplicate draft file');
+          const owned = files.length ? checked(await db.from('upload_sessions').select('*').eq('owner_id', user.id).in('id', files)) : [];
+          if (owned.length !== files.length || draft.gallery.some(item => !owned.some(file => file.id === item.id && file.kind === 'image')) ||
+              draft.attachments.some(item => !owned.some(file => file.id === item.id && file.kind === 'attachment'))) throw fail(400, 'Invalid draft media');
+          const row = checked(await db.rpc('save_draft', { p_owner: user.id, p_id: id, p_version: body.version, p_payload: payload, p_files: files }));
+          return json({ draft: await draftResult(row) });
+        }
         const row = checked(await db.from('drafts').select('*').eq('id', id).eq('owner_id', user.id).maybeSingle());
         if (!row) throw fail(404, 'Draft not found');
-        const files = checked(await db.from('upload_sessions').select('*')
-          .eq('draft_id', row.id).eq('owner_id', row.owner_id).eq('status', 'ready'));
-        const byId = new Map(files.map(file => [file.id, file]));
-        const payload = row.payload;
-        if (!payload.draft) return json({ draft: null });
-        const gallery = await Promise.all((payload.draft.gallery || []).filter(item => byId.has(item.id)).map(async item => {
-          const file = byId.get(item.id);
-          const src = file.bucket === 'showcase' || !file.provider
-            ? db.storage.from('showcase').getPublicUrl(file.object_key).data.publicUrl
-            : await uploadPreview(env, file.id);
-          return { ...item, src };
-        }));
-        return json({ draft: {
-          ...payload, id: row.owner_id + ':' + row.id, draftId: row.id, ownerId: row.owner_id,
-          updatedAt: new Date(row.updated_at).getTime(), cloudVersion: row.version, synced: true,
-          draft: { ...payload.draft, gallery, image: gallery[0]?.src || '' },
-        } });
+        return json({ draft: await draftResult(row) });
       }
       if (postWrite) {
         const id = requireUuid(path.split('/').pop());
