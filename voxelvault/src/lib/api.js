@@ -17,7 +17,8 @@ export async function api(path, options = {}) {
   const body = await response.json().catch(() => ({ error: 'API unavailable. Start the backend server.' }));
   if (!response.ok) {
     if (options.method && options.method !== 'GET') notify(body.error || 'Request failed','error');
-    throw Object.assign(new Error(body.error || 'Request failed'),{status:response.status});
+    throw Object.assign(new Error(body.error || 'Request failed'),{status:response.status,
+      invalidImages:body.invalidImages,invalidAttachments:body.invalidAttachments});
   }
   if (options.method === 'DELETE' && path.startsWith('/posts/')) notify('The post and its files have been removed.','success','Post deleted');
   if (options.method === 'POST' && path.startsWith('/posts/')) notify('Your changes are saved and your post is ready to view.','success','Post saved');

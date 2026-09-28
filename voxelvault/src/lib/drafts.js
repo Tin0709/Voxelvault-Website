@@ -1,5 +1,6 @@
 import {api,uploadFile} from './api';
 import {notify} from './notifications';
+import {invalidCachedUploads} from './uploadCache';
 function openDatabase() {
   return new Promise((resolve,reject)=>{
     const request=indexedDB.open('voxelvault-drafts',1);
@@ -18,23 +19,35 @@ async function transact(mode,run) {
 
 const localGet=(owner,id)=>transact('readonly',store=>store.get(owner+':'+id));
 const localPut=row=>transact('readwrite',store=>store.put(row));
-export async function saveDraft(ownerId,id,payload){
+export async function saveDraft(ownerId,id,payload,uploads=new Map()){
  const previous=await localGet(ownerId,id);
  let row={id:ownerId+':'+id,draftId:id,ownerId,updatedAt:Date.now(),cloudVersion:previous?.cloudVersion,...payload,synced:false};
  await localPut(row);
  try{
+  if(payload.draft.gallery.length>50)throw new Error('A post can contain at most 50 images. Remove extra images before saving.');
   const prepared=await api('/me/drafts/'+id+'/prepare',{method:'POST',body:'{}'});
   const version=previous?.cloudVersion??0;
   if(prepared.version!==version)throw new Error('This draft changed on another device. Open it again before saving. Your edits remain on this browser.');
   const tasks=[...payload.draft.gallery.map((item,index)=>({item,index,field:'gallery',kind:'image'})),
    ...payload.draft.attachments.map((item,index)=>({item,index,field:'attachments',kind:'attachment'}))];
+  for(const task of tasks){
+   const key=task.item.localKey||task.item.src||task.item.id;
+   task.cached=task.item.file?(uploads.get(task.item.src||task.item.id)||
+    (previous?.draft?.[task.field]||[]).find(f=>key&&f.localKey===key&&!f.file)):task.item;
+  }
+  const invalid=await invalidCachedUploads(tasks.filter(t=>t.kind==='image'&&t.cached).map(t=>t.cached),
+   tasks.filter(t=>t.kind==='attachment'&&t.cached).map(t=>t.cached),{postId:payload.postId,draftId:id});
+  for(const task of tasks)if(task.cached&&invalid.has(task.cached.id)){
+   uploads.delete(task.item.src||task.item.id);
+   task.cached=null;
+   if(!task.item.file)throw new Error('A saved draft file is no longer available. Select its original file again.');
+  }
   let cursor=0,failed=false,failure,persistTail=Promise.resolve();
   async function syncMedia(){
    while(!failed&&cursor<tasks.length){
-    const {item,index,field,kind}=tasks[cursor++];
+    const {item,index,field,kind,cached}=tasks[cursor++];
     try{
      let next=item;
-     const cached=(previous?.draft?.[field]||[]).find(f=>f.localKey===(item.localKey||item.src||item.id)&&!f.file);
      if(item.file){const uploaded=cached||await uploadFile(item.file,kind,()=>{},{silent:true,draftId:id});next={...item,...uploaded,localKey:item.localKey||item.src||item.id};delete next.file;}
      const items=[...row.draft[field]];items[index]=next;
      row={...row,draft:{...row.draft,[field]:items}};

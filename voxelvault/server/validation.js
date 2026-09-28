@@ -26,7 +26,9 @@ export function validatePost(body) {
     if (post[key].length > max) throw Object.assign(new Error(`${key} is too long`), { status: 400 });
   }
   if (!post.title || !post.category || (post.creditUrl && !httpUrl(post.creditUrl))) throw Object.assign(new Error('Invalid post title, category or credit URL'), { status: 400 });
-  if (!Array.isArray(body.images) || body.images.length < 1 || body.images.length > 30 || !Array.isArray(body.attachments) || body.attachments.length > 50 || !Array.isArray(body.externalDownloads) || body.externalDownloads.length > 50) throw Object.assign(new Error('Invalid images, attachments or links'), { status: 400 });
+  if (!Array.isArray(body.images) || body.images.length < 1 || body.images.length > 50) throw Object.assign(new Error('Invalid images: include between 1 and 50 images'), { status: 400 });
+  if (!Array.isArray(body.attachments) || body.attachments.length > 50) throw Object.assign(new Error('Invalid attachments: include at most 50 attachments'), { status: 400 });
+  if (!Array.isArray(body.externalDownloads) || body.externalDownloads.length > 50) throw Object.assign(new Error('Invalid external links: include at most 50 links'), { status: 400 });
   const ids = [...body.images, ...body.attachments].map((item) => requireUuid(item?.id));
   if (new Set(ids).size !== ids.length) throw Object.assign(new Error('Duplicate file'), { status: 400 });
   for (const link of body.externalDownloads) {

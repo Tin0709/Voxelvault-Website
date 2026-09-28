@@ -3,6 +3,7 @@ import ProgressBar from '../ui/ProgressBar';
 
 import { useAuth } from '../../auth/AuthContext';
 import { saveDraft, deleteDraft } from '../../lib/drafts';
+import { invalidCachedUploads } from '../../lib/uploadCache';
 import CategoryPicker from './CategoryPicker';
 import Icon from '../ui/Icon';
 import { useEffect, useRef, useState } from "react";
@@ -86,7 +87,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
   async function keepDraft() {
     setDraftBusy(true);setSaveError('');
     try {
-      const saved=await saveDraft(ownerId.current,localDraftId.current,{creation,mode,draft,postId:postId.current});
+      const saved=await saveDraft(ownerId.current,localDraftId.current,{creation,mode,draft,postId:postId.current},savedUploads.current);
       bypass.current=true;if(saved.synced)notify('Your private draft and files are synced. Continue on any device.','success','Continue later');else notify('Saved on this device only. Cloud sync failed: '+saved.syncError,'info','Draft kept on this device');
       if(pendingLeave)await pendingLeave();else if(blocker.state==='blocked')blocker.proceed();else navigate('/my-posts');
     }catch(error){setSaveError('Could not save the draft: '+error.message);notify(error.message,'error','Cloud draft not synced');}
@@ -141,14 +142,16 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
 
   async function savePost() {
     if (!preview || saving) return;
+    if(preview.gallery.length>50){setSaveError('A post can contain at most 50 images. Remove extra images before uploading.');return;}
     setSaving(true); setSaveError('');
     const currentKeys = new Set([...preview.gallery, ...preview.attachments].filter(item => item.file).map(item => item.src || item.id));
-    setUploadProgress(current => Object.fromEntries(Object.entries(current).filter(([key]) => currentKeys.has(key))));
+    setUploadProgress(current => Object.fromEntries(Object.entries(current).filter(([key]) => currentKeys.has(key))
+      .map(([key,item])=>[key,{...item,status:'checking',progress:0}])));
     async function ensureUploaded(item, kind) {
       if (!item.file) return { id: item.id, alt: item.alt ?? '' };
       const key = item.src || item.id;
-      if (savedUploads.current.has(key)) return savedUploads.current.get(key);
       const update = (progress, status) => setUploadProgress((current) => ({ ...current, [key]: { name: item.file.name, progress, status } }));
+      if (savedUploads.current.has(key)) {update(100,'complete');return savedUploads.current.get(key);}
       update(0,'uploading');
       try {
         const result = await uploadFile(item.file, kind, (percent) => update(percent, percent === 100 ? 'verifying' : 'uploading'), {silent:true});
@@ -158,6 +161,14 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
       } catch (error) { update(0,'failed'); throw error; }
     }
     try {
+      const candidates=items=>items.map(item=>item.file?savedUploads.current.get(item.src||item.id):item).filter(Boolean);
+      const invalid=await invalidCachedUploads(candidates(preview.gallery),candidates(preview.attachments),
+        {postId:postId.current,draftId:localDraftId.current});
+      for(const [key,record] of savedUploads.current)if(invalid.has(record.id))savedUploads.current.delete(key);
+      setUploadProgress(current=>Object.fromEntries(Object.entries(current).filter(([key])=>savedUploads.current.has(key))));
+      if([...preview.gallery,...preview.attachments].some(item=>!item.file&&invalid.has(item.id))) {
+        throw new Error('A saved upload is no longer available. Select its original file again.');
+      }
       const images = [];
       const attachments = [];
       for (const image of preview.gallery) images.push(await ensureUploaded(image,'image'));
@@ -166,12 +177,17 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
         title: preview.title, description: preview.description, category: preview.category, location: preview.location,
         minecraftVersion: preview.minecraftVersion, revisionNotes: preview.revisionNotes,
         originalCreator: preview.originalCreator, originalSource: preview.originalSource, creditUrl: preview.creditUrl,
-        version: creation.version ?? 0, images, attachments, externalDownloads: preview.externalDownloads,
+        version: creation.version ?? 0, images, attachments, externalDownloads: preview.externalDownloads, draftId:localDraftId.current,
       }) });
       bypass.current=true;
       await deleteDraft(ownerId.current,localDraftId.current).catch(()=>notify('Post saved, but its draft could not be removed.','info'));
       navigate(`/creations/${postId.current}`);
-    } catch (error) { setSaveError(error.message); } finally { setSaving(false); }
+    } catch (error) {
+      const invalid=new Set([...(error.invalidImages||[]),...(error.invalidAttachments||[])]);
+      for(const [key,record] of savedUploads.current)if(invalid.has(record.id))savedUploads.current.delete(key);
+      setUploadProgress(current=>Object.fromEntries(Object.entries(current).filter(([key])=>savedUploads.current.has(key))));
+      setSaveError(error.message);
+    } finally { setSaving(false); }
   }
 
   function updateField(event) {
@@ -309,6 +325,8 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
 
   function handlePreview(event) {
     event.preventDefault();
+
+    if(draft.gallery.length>50){setError('A post can contain at most 50 images. Remove extra images before previewing.');return;}
 
     if(draft.gallery.some(image=>image.file&&exceedsImageLimit(image.file))){setError('Remove images of 5 MB or larger before previewing. Existing published images can stay.');return;}
     if (draft.gallery.length === 0) {

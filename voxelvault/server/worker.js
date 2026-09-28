@@ -17,6 +17,31 @@ async function userFor(request, db, required = true) {
   return data.user;
 }
 
+async function checkUploadReuse(db, user, body) {
+  const postId = requireUuid(body?.postId);
+  const draftId = body.draftId == null ? null : requireUuid(body.draftId);
+  if (!Array.isArray(body.images) || !Array.isArray(body.attachments) ||
+      body.images.length + body.attachments.length > 100) throw fail(400, 'Invalid upload check');
+  const requested = [...body.images.map(id => ({ id: requireUuid(id), kind: 'image' })),
+    ...body.attachments.map(id => ({ id: requireUuid(id), kind: 'attachment' }))];
+  if (!requested.length) return { invalidImages: [], invalidAttachments: [] };
+  const [files, profile] = await Promise.all([
+    db.from('upload_sessions').select('id,kind,status,post_id,draft_id').eq('owner_id', user.id)
+      .in('id', [...new Set(requested.map(file => file.id))]).then(checked),
+    db.from('profiles').select('avatar_upload_id,cover_upload_id').eq('id', user.id).maybeSingle().then(checked),
+  ]);
+  const byId = new Map(files.map(file => [file.id, file]));
+  const invalid = requested.filter(item => {
+    const file = byId.get(item.id);
+    return !file || file.kind !== item.kind || file.status !== 'ready' ||
+      (file.post_id && file.post_id !== postId) || (file.draft_id && file.draft_id !== draftId) ||
+      file.id === profile?.avatar_upload_id || file.id === profile?.cover_upload_id;
+  });
+  // Only echo submitted IDs; missing and foreign resources are indistinguishable.
+  return { invalidImages: invalid.filter(file => file.kind === 'image').map(file => file.id),
+    invalidAttachments: invalid.filter(file => file.kind === 'attachment').map(file => file.id) };
+}
+
 // Internal only: MIME must come from bytes, never client Content-Type/filename.
 export async function prepareUpload(request, db, detectedMime) {
   const user = await userFor(request, db);
@@ -579,7 +604,8 @@ export default {
     const suggestionsRequest = request.method === 'GET' && path === '/api/search/suggestions';
     const archiveRequest = request.method === 'GET' && /^\/api\/posts\/[^/]+\/archive$/.test(path);
     const unusedDelete = request.method === 'DELETE' && /^\/api\/me\/storage\/uploads\/[^/]+$/.test(path);
-    if (!unusedDelete && !archiveRequest && !suggestionsRequest && !storageRequest && !draftDetail && !postWrite && !currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
+    const uploadCheck = request.method === 'POST' && path === '/api/uploads/validate';
+    if (!uploadCheck && !unusedDelete && !archiveRequest && !suggestionsRequest && !storageRequest && !draftDetail && !postWrite && !currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
       return json({ error: 'Not found' }, 404);
     }
     try {
@@ -589,6 +615,10 @@ export default {
       const db = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
+      if (uploadCheck) {
+        const user = await userFor(request, db);
+        return json(await checkUploadReuse(db, user, await profileJson(request)));
+      }
       if (unusedDelete) {
         const user = await userFor(request, db);
         const result = await db.rpc('claim_unused_upload', {
@@ -713,7 +743,7 @@ export default {
         if (request.method === 'POST') {
           const body = await profileJson(request), payload = body?.payload, draft = payload?.draft;
           if (!draft || !['create', 'edit'].includes(payload.mode) || !Number.isInteger(body.version) || body.version < 0 ||
-              !Array.isArray(draft.gallery) || draft.gallery.length > 30 || !Array.isArray(draft.attachments) || draft.attachments.length > 50) throw fail(400, 'Invalid draft');
+              !Array.isArray(draft.gallery) || draft.gallery.length > 50 || !Array.isArray(draft.attachments) || draft.attachments.length > 50) throw fail(400, 'Invalid draft');
           requireUuid(payload.postId);
           const files = [...draft.gallery, ...draft.attachments].map(file => requireUuid(file.id));
           if (new Set(files).size !== files.length) throw fail(400, 'Duplicate draft file');
@@ -733,6 +763,12 @@ export default {
         if (request.method === 'POST') {
           const body = await profileJson(request);
           const post = validatePost(body);
+          const invalid = await checkUploadReuse(db, user, { postId: id, draftId: body.draftId,
+            images: body.images.map(file => file.id), attachments: body.attachments.map(file => file.id) });
+          if (invalid.invalidImages.length || invalid.invalidAttachments.length) {
+            return json({ error: invalid.invalidImages.length ? 'Some image uploads are no longer reusable. Retry with the original files.' :
+              'Some attachment uploads are no longer reusable. Retry with the original files.', ...invalid }, 400);
+          }
           checked(await db.rpc('save_post', {
             p_owner: user.id, p_id: id, p_version: body.version, p_post: post,
             p_images: body.images, p_attachments: body.attachments, p_links: body.externalDownloads,
