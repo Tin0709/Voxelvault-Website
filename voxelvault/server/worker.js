@@ -284,6 +284,33 @@ async function profileJson(request) {
   } finally { reader?.releaseLock(); }
 }
 
+function isMissingCleanupObject(error) {
+  // A bucket/routing 404 is not proof that the object is absent. Never swallow
+  // authentication, permission or transient failures, even with a misleading code.
+  const statuses = [error?.status, error?.statusCode].filter(value => value != null).map(Number);
+  if (statuses.some(status => ![400, 404].includes(status))) return false;
+  const code = error?.code || error?.error || (error?.name === 'NoSuchKey' ? error.name : undefined);
+  if (code) return code === 'NoSuchKey';
+  return statuses.length > 0 && ['Object not found', 'The specified key does not exist.'].includes(error?.message);
+}
+
+async function removeCleanupUpload(db, env, ownerId, file) {
+  if (!file || file.owner_id !== ownerId || file.status !== 'deleting' || file.post_id || file.draft_id ||
+      !['r2', 'supabase'].includes(file.provider) || typeof file.object_key !== 'string' || !file.object_key.trim() ||
+      typeof file.bucket !== 'string' || !file.bucket.trim()) throw fail(503, 'Invalid cleanup metadata');
+  requireUuid(file.id);
+  try {
+    if (file.provider === 'r2') {
+      if (!env.FILES_BUCKET) throw fail(503, 'R2 is not configured');
+      await env.FILES_BUCKET.delete(file.object_key);
+    } else checked(await db.storage.from(file.bucket).remove([file.object_key]));
+  } catch (error) {
+    if (!isMissingCleanupObject(error)) throw error;
+  }
+  checked(await db.from('upload_sessions').delete().eq('id', file.id)
+    .eq('owner_id', ownerId).eq('status', 'deleting').is('post_id', null).is('draft_id', null));
+}
+
 async function cleanupProfileUploads(db, env, ownerId, limit = CLEANUP_FILES_PER_ACCOUNT) {
   if (!Number.isInteger(limit) || limit <= 0) return;
   const files = checked(await db.rpc('claim_cleanup', {
@@ -291,11 +318,10 @@ async function cleanupProfileUploads(db, env, ownerId, limit = CLEANUP_FILES_PER
   }));
   for (const file of files) {
     try {
-      if (file.provider === 'r2') {
-        if (!env.FILES_BUCKET) throw fail(503, 'R2 is not configured');
-        await env.FILES_BUCKET.delete(file.object_key);
-      } else checked(await db.storage.from(file.bucket).remove([file.object_key]));
-      checked(await db.from('upload_sessions').delete().eq('id', file.id).eq('status', 'deleting'));
+      // Reuse the strict reference checks (post joins, drafts, avatar and cover)
+      // before object deletion, including when a scheduled claim found stale data.
+      const claimed = checked(await db.rpc('claim_unused_upload', { p_owner: ownerId, p_upload: file.id }));
+      await removeCleanupUpload(db, env, ownerId, claimed);
     } catch { console.error(`Cleanup pending for upload ${file.id}`); }
   }
 }
@@ -552,7 +578,8 @@ export default {
     const storageRequest = request.method === 'GET' && ['/api/me/storage', '/api/me/storage/details'].includes(path);
     const suggestionsRequest = request.method === 'GET' && path === '/api/search/suggestions';
     const archiveRequest = request.method === 'GET' && /^\/api\/posts\/[^/]+\/archive$/.test(path);
-    if (!archiveRequest && !suggestionsRequest && !storageRequest && !draftDetail && !postWrite && !currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
+    const unusedDelete = request.method === 'DELETE' && /^\/api\/me\/storage\/uploads\/[^/]+$/.test(path);
+    if (!unusedDelete && !archiveRequest && !suggestionsRequest && !storageRequest && !draftDetail && !postWrite && !currentProfile && !uploadRequest && (request.method !== 'GET' || (!browsing && !imageRequest && !fileDownload && !['/api/categories', '/api/me/categories'].includes(path)))) {
       return json({ error: 'Not found' }, 404);
     }
     try {
@@ -562,6 +589,22 @@ export default {
       const db = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
+      if (unusedDelete) {
+        const user = await userFor(request, db);
+        const result = await db.rpc('claim_unused_upload', {
+          p_owner: user.id, p_upload: requireUuid(path.split('/')[5]),
+        });
+        if (result.error) {
+          if (result.error.code === 'PGRST202') throw fail(503, 'Apply migration 202609230005_unused_upload_deletion.sql to enable safe removal.');
+          throw fail(409, result.error.message);
+        }
+        try { await removeCleanupUpload(db, env, user.id, result.data); }
+        catch {
+          console.error('Unused upload cleanup pending');
+          throw fail(503, 'Storage deletion is pending. Retry removal; quota is retained until deletion succeeds.');
+        }
+        return json({ deleted: true });
+      }
       if (archiveRequest) {
         const user = await userFor(request, db);
         const post = checked(await db.from('posts').select('id,title')
