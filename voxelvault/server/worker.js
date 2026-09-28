@@ -387,19 +387,57 @@ async function profileFor(id) {
       if(after.length>80||category.length>80||search.length>200)throw fail(400,'Invalid feed request');
       const rows=checked(await db.rpc(url.searchParams.get('view')==='posts'?'post_feed':'image_feed',{p_seed:seed,p_after:after,p_category:category,p_search:search,p_limit:31}));
       const page=rows.slice(0,30);
+      async function feedProfiles(ids) {
+        const uniqueIds = [...new Set(ids)];
+        if (!uniqueIds.length) return new Map();
+        const profiles = checked(await db.from('profiles')
+          .select('id,name,avatar_upload_id,cover_upload_id').in('id', uniqueIds));
+        const byId = new Map(profiles.map(profile => [profile.id, profile]));
+        if (uniqueIds.some(id => !byId.has(id))) throw fail(404, 'Profile not found');
+        const resourceIds = [...new Set(profiles.flatMap(profile =>
+          [profile.avatar_upload_id, profile.cover_upload_id]).filter(Boolean))];
+        const resources = resourceIds.length ? checked(await db.from('upload_sessions')
+          .select('*').in('id', resourceIds)) : [];
+        const byResource = new Map(resources.map(file => [file.id, file]));
+        // Preserve profileFor's error for a dangling reference, while absent
+        // optional avatar/cover IDs require neither an object nor a request.
+        if (resourceIds.some(id => !byResource.has(id))) throw new Error('Profile image not found');
+        return new Map(profiles.map(profile => [profile.id, {
+          name: profile.name,
+          avatarUrl: profile.avatar_upload_id ? publicImage(byResource.get(profile.avatar_upload_id)) : '',
+        }]));
+      }
       if(url.searchParams.get('view')==='posts'){
         const ids=page.map(row=>row.post_id);
-        const posts=ids.length?checked(await db.from('posts').select('*').in('id',ids)):[];
+        // Embed galleries so the top-level row limit applies to posts, not the
+        // combined image count of thirty galleries. Order each gallery locally.
+        const posts=ids.length?checked(await db.from('posts')
+          .select('*,post_images(position,alt,upload_sessions(*))').in('id',[...new Set(ids)])):[];
         const byId=new Map(posts.map(post=>[post.id,post]));
-        return {items:await Promise.all(ids.filter(id=>byId.has(id)).map(id=>hydrate(byId.get(id)))),next:rows.length>30?page.at(-1).sort_key:null};
+        const profiles=await feedProfiles(posts.map(post=>post.owner_id));
+        const items=ids.filter(id=>byId.has(id)).map(id=>{
+          const post=byId.get(id), profile=profiles.get(post.owner_id);
+          const gallery=(post.post_images || []).filter(item=>item.upload_sessions)
+            .sort((a,b)=>a.position-b.position).map(item=>({
+              id:item.upload_sessions.id,src:publicImage(item.upload_sessions),alt:item.alt,
+            }));
+          return {
+            id:post.id,ownerId:post.owner_id,creatorId:post.owner_id,creator:profile.name,creatorAvatar:profile.avatarUrl,
+            title:post.title,description:post.description,category:post.category,location:post.location,
+            minecraftVersion:post.minecraft_version,revisionNotes:post.revision_notes,
+            originalCreator:post.original_creator,originalSource:post.original_source,creditUrl:post.credit_url,
+            version:post.version,gallery,image:gallery[0]?.src ?? '',alt:gallery[0]?.alt ?? '',
+          };
+        });
+        return {items,next:rows.length>30?page.at(-1).sort_key:null};
       }
       const descriptions=page.length?checked(await db.from('posts').select('id,description').in('id',[...new Set(page.map(row=>row.post_id))])):[];
       const byPost=new Map(descriptions.map(post=>[post.id,post.description]));
-      const imageIds=page.map(row=>row.image_id);
+      const imageIds=[...new Set(page.map(row=>row.image_id))];
       const files=imageIds.length?checked(await db.from('upload_sessions').select('*').in('id',imageIds)):[];
       const byImage=new Map(files.map(f=>[f.id,f]));
-      const profiles=await Promise.all([...new Set(page.map(row=>row.creator_id))].map(id=>profileFor(id)));
-      const avatars=new Map(profiles.map(profile=>[profile.id,profile.avatarUrl]));
+      const profiles=await feedProfiles(page.map(row=>row.creator_id));
+      const avatars=new Map([...profiles].map(([id,profile])=>[id,profile.avatarUrl]));
       return {items:page.map(row=>({id:row.image_id,postId:row.post_id,imageId:row.image_id,title:row.title,description:byPost.get(row.post_id)||'',category:row.category,creator:row.creator,creatorId:row.creator_id,image:publicImage(byImage.get(row.image_id)||row),alt:row.alt,creatorAvatar:avatars.get(row.creator_id)||''})),next:rows.length>30?page.at(-1).sort_key:null};
     }
     if (path === '/api/posts' && request.method === 'GET') {
