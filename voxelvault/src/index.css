@@ -309,3 +309,18 @@ body {
 .vv-site-background::after{content:'';position:absolute;top:62%;left:0;width:28vw;height:1px;background:linear-gradient(90deg,transparent,#68dba91c,transparent);animation:vv-trace 22s linear infinite}
 @keyframes vv-trace{from{transform:translateX(-30vw)}to{transform:translateX(105vw)}}
 @media(prefers-reduced-motion:reduce){.vv-site-background::after{animation:none}}
+
+/* Compact showcase pagination, including ten-slide decks on narrow screens. */
+.vv-showcase-controls>button{flex-shrink:0}
+.vv-showcase-controls>div{flex:0 1 auto;min-width:0;flex-wrap:nowrap;gap:0;padding:2px 8px;border-radius:999px;background:#b5c4ce22;backdrop-filter:blur(14px);border:1px solid #ffffff0d}
+.vv-showcase-controls>div button{width:20px;min-width:0;flex:1 1 20px;height:36px}
+.vv-showcase-controls>div span{width:5px;height:5px;background:#d4e1dc66;border-radius:50%;transition:transform .25s,background .25s}
+.vv-showcase-controls [aria-pressed=true] span{width:5px;background:#f5fff9;transform:scale(1.65)}
+.vv-draft-status{position:fixed;top:max(16px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:150;display:flex;align-items:center;gap:12px;width:max-content;max-width:calc(100vw - 32px);padding:14px 20px;border:1px solid #68dba955;border-radius:16px;background:#17241ff5;box-shadow:0 10px 35px #0006;color:#d6f6e6;font-size:14px;animation:vv-draft-in .22s ease-out}
+.vv-draft-status[data-state=error]{border-color:#fbbf2466;color:#fde68a}
+.vv-draft-status-out{animation:vv-draft-out .22s ease-in forwards}
+.vv-draft-spinner{width:18px;height:18px;flex-shrink:0;border:2px solid #68dba933;border-top-color:#68dba9;border-radius:50%;animation:vv-draft-spin .8s linear infinite}
+@keyframes vv-draft-spin{to{transform:rotate(360deg)}}
+@keyframes vv-draft-in{from{opacity:0;transform:translate(-50%,-20px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes vv-draft-out{to{opacity:0;transform:translate(-50%,-20px)}}
+@media(prefers-reduced-motion:reduce){.vv-draft-status,.vv-draft-status-out{animation:none}.vv-draft-status-out{opacity:0}.vv-showcase-controls>div span{transition:none}}

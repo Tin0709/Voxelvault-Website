@@ -1,3 +1,4 @@
+import {createPortal} from 'react-dom';
 import {createId} from '../../lib/createId';
 import ProgressBar from '../ui/ProgressBar';
 
@@ -16,7 +17,7 @@ import PostMediaEditor from "./PostMediaEditor";
 import PostAttachmentsEditor from "./PostAttachmentsEditor";
 import PostCredits from "./PostCredits";
 import ExternalDownloadsEditor from "./ExternalDownloadsEditor";
-import { exceedsImageLimit, formatBytes, safeCreditUrl } from "../../utils/attachments";
+import { MAX_POST_IMAGES, exceedsImageLimit, formatBytes, safeCreditUrl } from "../../utils/attachments";
 
 const categories = [
   "architecture",
@@ -39,6 +40,8 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
   const bypass=useRef(false);
   const leaveDialog=useRef(null);
   const [draftBusy,setDraftBusy]=useState(false);
+  const draftSaving=useRef(false);
+  const [draftStatus,setDraftStatus]=useState(null);
   const [pendingLeave,setPendingLeave]=useState(null);
   const navigate = useNavigate();
   const { data: personalCategories } = useApi('/me/categories');
@@ -85,13 +88,22 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
   function continueEditing(){if(draftBusy)return;setPendingLeave(null);if(blocker.state==='blocked')blocker.reset();}
   useEffect(()=>{const warn=e=>{if(dirty&&!bypass.current){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[dirty]);
   async function keepDraft() {
+    if(draftSaving.current || saving)return;
+    draftSaving.current=true;
+    leaveDialog.current?.close();
+    setDraftStatus({type:'loading',message:'Saving draft…'});
     setDraftBusy(true);setSaveError('');
     try {
       const saved=await saveDraft(ownerId.current,localDraftId.current,{creation,mode,draft,postId:postId.current},savedUploads.current);
+      setDraftStatus({type:saved.synced?'success':'error',message:saved.synced?'Draft saved': 'Saved on this device. Cloud sync failed; retry from My Posts.'});
+      await new Promise(resolve=>setTimeout(resolve,saved.synced?900:2200));
+      setDraftStatus(current=>({...current,closing:true}));
+      await new Promise(resolve=>setTimeout(resolve,220));
+      setDraftStatus(null);
       bypass.current=true;if(saved.synced)notify('Your private draft and files are synced. Continue on any device.','success','Continue later');else notify('Saved on this device only. Cloud sync failed: '+saved.syncError,'info','Draft kept on this device');
       if(pendingLeave)await pendingLeave();else if(blocker.state==='blocked')blocker.proceed();else navigate('/my-posts');
-    }catch(error){setSaveError('Could not save the draft: '+error.message);notify(error.message,'error','Cloud draft not synced');}
-    finally{setDraftBusy(false);}
+    }catch(error){setDraftStatus({type:'error',message:'Could not save draft: '+error.message});setSaveError('Could not save the draft: '+error.message);notify(error.message,'error','Cloud draft not synced');}
+    finally{draftSaving.current=false;setDraftBusy(false);}
   }
 
   const [preview, setPreview] = useState(null);
@@ -142,7 +154,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
 
   async function savePost() {
     if (!preview || saving) return;
-    if(preview.gallery.length>50){setSaveError('A post can contain at most 50 images. Remove extra images before uploading.');return;}
+    if(preview.gallery.length>MAX_POST_IMAGES){setSaveError('A post can contain at most 50 images. Remove extra images before uploading.');return;}
     setSaving(true); setSaveError('');
     const currentKeys = new Set([...preview.gallery, ...preview.attachments].filter(item => item.file).map(item => item.src || item.id));
     setUploadProgress(current => Object.fromEntries(Object.entries(current).filter(([key]) => currentKeys.has(key))
@@ -326,7 +338,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
   function handlePreview(event) {
     event.preventDefault();
 
-    if(draft.gallery.length>50){setError('A post can contain at most 50 images. Remove extra images before previewing.');return;}
+    if(draft.gallery.length>MAX_POST_IMAGES){setError('A post can contain at most 50 images. Remove extra images before previewing.');return;}
 
     if(draft.gallery.some(image=>image.file&&exceedsImageLimit(image.file))){setError('Remove images of 5 MB or larger before previewing. Existing published images can stay.');return;}
     if (draft.gallery.length === 0) {
@@ -373,6 +385,11 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
 
   return (
     <main className="vault-page-enter mx-auto w-full max-w-[1500px] flex-1 px-6 py-8 lg:px-10">
+      {draftStatus&&createPortal(<div className={'vv-draft-status '+(draftStatus.closing?'vv-draft-status-out':'')} data-state={draftStatus.type} role={draftStatus.type==='error'?'alert':'status'} aria-live={draftStatus.type==='error'?'assertive':'polite'}>
+        {draftStatus.type==='loading'?<span className="vv-draft-spinner" aria-hidden="true"/>:<span aria-hidden="true">{draftStatus.type==='success'?'✓':'!'}</span>}
+        <span>{draftStatus.message}</span>
+        {!draftBusy&&<button type="button" aria-label="Dismiss draft status" onClick={()=>setDraftStatus(null)}>×</button>}
+      </div>,document.body)}
       <form onSubmit={handlePreview} className={dirty?"pb-32":""}>
         <fieldset disabled={saving||draftBusy} className="min-w-0">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">

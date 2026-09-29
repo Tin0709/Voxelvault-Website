@@ -1,7 +1,7 @@
 import ProgressBar from '../components/ui/ProgressBar';
 import { confirmAction } from '../lib/confirm';
 import Icon, { FileIcon } from '../components/ui/Icon';
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import PostGallery from "../components/post/PostGallery";
 import { useApi } from "../lib/useApi";
@@ -20,6 +20,20 @@ function PostDetailPage() {
   const { user } = useAuth();
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
+  const activeDownloads = useRef(new Set());
+  const [downloading, setDownloading] = useState(new Set());
+  async function downloadAttachment(file) {
+    if (activeDownloads.current.has(file.id)) return;
+    activeDownloads.current.add(file.id);
+    setDownloading(new Set(activeDownloads.current));
+    setActionError('');
+    try { await downloadFile(file); }
+    catch (error) { setActionError(error.message); }
+    finally {
+      activeDownloads.current.delete(file.id);
+      setDownloading(new Set(activeDownloads.current));
+    }
+  }
   const [shareResult, setShareResult] = useState(null);
   const shareMessage = shareResult?.id === id ? shareResult.message : "";
 
@@ -183,10 +197,7 @@ function PostDetailPage() {
                 <ul className="mt-4 space-y-3">
                   {(creation.attachments ?? []).map((file) => <li key={file.id} className="break-words rounded-xl border border-white/5 bg-black/25 p-4">
                     <div className="flex items-center gap-3"><FileIcon name={file.originalName}/><div className="min-w-0"><p className="break-words text-sm font-medium">{file.originalName}</p><p className="mt-1 text-xs text-on-surface-variant">{formatBytes(file.sizeBytes)} · {file.originalName.split('.').pop().toUpperCase()}</p></div></div>
-                    <button type="button" disabled={busy} className="mt-3 text-sm text-primary" onClick={async () => {
-                      setBusy(true); setActionError('');
-                      try { await downloadFile(file); } catch (error) { setActionError(error.message); } finally { setBusy(false); }
-                    }}><Icon name="download" className="mr-2 !h-4 !w-4"/>{busy ? 'Please wait…' : 'Download file'}</button>
+                    <button type="button" disabled={downloading.has(file.id)} aria-busy={downloading.has(file.id)} className="mt-3 text-sm text-primary" onClick={()=>downloadAttachment(file)}><Icon name="download" className="mr-2 !h-4 !w-4"/>{downloading.has(file.id) ? 'Please wait…' : 'Download file'}</button>
                   </li>)}
                 </ul>
                 {(creation.attachments ?? []).length === 0 && <p className="mt-3 text-sm text-on-surface-variant">No uploaded files.</p>}

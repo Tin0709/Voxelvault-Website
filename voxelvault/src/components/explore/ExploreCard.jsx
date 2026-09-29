@@ -3,7 +3,7 @@ import Icon from '../ui/Icon';
 export function CardSkeleton({mediaOnly=false}){return <div className={`vv-skeleton ${mediaOnly?'vv-skeleton-media':''}`} aria-label="Loading image" role="status"><div className="vv-skeleton-picture"><span className="vv-skeleton-cube"><Icon name="cube" className="!h-10 !w-10"/></span><span className="text-[10px] uppercase tracking-[.15em] text-primary">Discovering voxels…</span></div>{!mediaOnly&&<div className="p-5"><div className="vv-bone w-3/4"/><div className="vv-bone mt-3 w-full"/><div className="vv-bone mt-3 w-1/2"/><div className="vv-bone mt-7 w-2/3"/></div>}</div>;}
 export default function ExploreCard({creation,onOpen}){
  const [state,setState]=useState('loading');
- return <article className="vv-explore-card"><button type="button" onClick={()=>onOpen(creation)} className="block w-full text-left" aria-label={`View ${creation.title}`}>
+ return <article data-card-id={creation.id} className="vv-explore-card"><button type="button" onClick={()=>onOpen(creation)} className="block w-full text-left" aria-label={`View ${creation.title}`}>
   <div className={`vv-card-image ${state==='loading'?'vv-image-pending':''}`}>
    {state==='loading'&&<CardSkeleton mediaOnly/>}
    {state==='error'?<div className="flex aspect-[4/3] items-center justify-center text-sm text-on-surface-variant"><Icon name="image" className="mr-2"/>Image unavailable</div>:<img src={creation.image} alt={creation.alt||creation.title} loading="lazy" onLoad={()=>setState('ready')} onError={()=>setState('error')} className={state==='loading'?'opacity-0':'opacity-100'}/>}

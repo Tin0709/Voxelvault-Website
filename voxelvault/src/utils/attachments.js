@@ -1,3 +1,4 @@
+export const MAX_POST_IMAGES = 50;
 export function formatBytes(bytes) {
   if (bytes === 0) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];

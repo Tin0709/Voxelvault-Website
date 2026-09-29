@@ -1,3 +1,4 @@
+import {MAX_POST_IMAGES} from '../../utils/attachments';
 import { confirmAction } from '../../lib/confirm';
 import Icon from '../ui/Icon';
 import { useState } from "react";
@@ -36,8 +37,8 @@ function PostMediaEditor({ images, onChange, onAddFiles }) {
           </p>
         </div>
 
-        <span className="rounded-full bg-primary/10 px-3 py-1 text-xs text-primary">
-          {images.length} images
+        <span role="status" className={'rounded-full px-3 py-1 text-xs '+(images.length>=MAX_POST_IMAGES?'bg-amber-300/20 text-amber-200':images.length>=MAX_POST_IMAGES-5?'bg-amber-300/10 text-amber-200':'bg-primary/10 text-primary')}>
+          {images.length} / {MAX_POST_IMAGES} images{images.length>=MAX_POST_IMAGES ? (images.length>MAX_POST_IMAGES?' · Remove extra images':' · Limit reached') : ''}
         </span>
       </div>
 
