@@ -1,5 +1,5 @@
 import {useSwipe} from '../../lib/useSwipe';
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {Link} from 'react-router';
 import Icon from '../ui/Icon';
 import HomeImage from './HomeImage';
@@ -11,6 +11,26 @@ function RandomShowcase({posts}){
  // Pick once when this visit's posts arrive; renders and arrow clicks keep the same deck.
  const [selectedIds]=useState(()=>randomPostWave(posts,[],10).map(post=>post.id));
  return <Deck posts={selectedIds.map(id=>posts.find(post=>post.id===id))}/>;
+}
+function ShowcasePagination({posts,active,onSelect}){
+ const [mobile,setMobile]=useState(()=>window.matchMedia('(max-width: 639px)').matches);
+ useEffect(()=>{
+  const media=window.matchMedia('(max-width: 639px)');
+  const update=()=>setMobile(media.matches);
+  update();media.addEventListener('change',update);
+  return()=>media.removeEventListener('change',update);
+ },[]);
+ const visible=Math.min(posts.length,mobile?4:5);
+ const start=Math.max(0,Math.min(active-Math.floor(visible/2),posts.length-visible));
+ return <div className="vv-showcase-pagination" style={{width:visible*28}} role="group" aria-label="Choose showcase">
+  <div className="vv-showcase-dot-track" style={{transform:`translateX(-${start*28}px)`}}>
+   {posts.map((post,i)=>{
+    const inWindow=i>=start&&i<start+visible;
+    const edge=(i===start&&start>0)||(i===start+visible-1&&start+visible<posts.length);
+    return <button key={post.id} type="button" onClick={()=>onSelect(i)} aria-label={`Showcase ${i+1}: ${post.title}`} aria-pressed={i===active} aria-hidden={!inWindow} tabIndex={inWindow?0:-1} data-edge={edge} style={{pointerEvents:inWindow?'auto':'none'}}><span/></button>;
+   })}
+  </div>
+ </div>;
 }
 function Deck({posts,loading=false}){
  const [index,setIndex]=useState(0);
@@ -25,7 +45,7 @@ function Deck({posts,loading=false}){
     <div className="vv-showcase-caption"><span>{post.category}</span><h2>{post.title}</h2><p>By {post.creator}</p><small>VOXELVAULT / SPATIAL ARCHIVE — {String(i+1).padStart(2,'0')}</small></div>
    </Link>;})}
   </div>
-  {posts.length>1&&<div className="vv-showcase-controls"><button type="button" onClick={()=>shift(-1)} aria-label="Previous showcase"><Icon name="chevronRight" className="rotate-180"/></button><div>{posts.map((post,i)=><button key={post.id} type="button" onClick={()=>setIndex(i)} aria-label={`Showcase ${i+1}: ${post.title}`} aria-pressed={i===active}><span/></button>)}</div><button type="button" onClick={()=>shift(1)} aria-label="Next showcase"><Icon name="chevronRight"/></button></div>}
+  {posts.length>1&&<div className="vv-showcase-controls"><button type="button" onClick={()=>shift(-1)} aria-label="Previous showcase"><Icon name="chevronRight" className="rotate-180"/></button><ShowcasePagination posts={posts} active={active} onSelect={setIndex}/><button type="button" onClick={()=>shift(1)} aria-label="Next showcase"><Icon name="chevronRight"/></button></div>}
   <p className="sr-only" aria-live="polite">{posts[active]?.title}</p>
  </section>;
 }
