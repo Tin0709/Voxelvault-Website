@@ -1,3 +1,5 @@
+import {useApi} from './lib/useApi';
+import {categoryOptions} from './lib/categories';
 import RequestState from './components/ui/RequestState';
 import SiteBackground from './components/ui/SiteBackground';
 import { lazy, Suspense, useState } from "react";
@@ -22,6 +24,8 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
 
+  const {data:categoryData}=useApi('/categories');
+  const customCategories=categoryData?.categories??[];
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -40,7 +44,7 @@ function App() {
 
   return (
     <div className="vv-app flex min-h-screen flex-col font-body-md text-on-surface">
-      <SiteBackground/><Header searchQuery={searchQuery} onSearchChange={handleSearchChange} onExplore={resetExplore} />
+      <SiteBackground/><Header searchQuery={searchQuery} onSearchChange={handleSearchChange} onExplore={resetExplore} categories={categoryOptions(customCategories)} onCategorySelect={id=>{setActiveCategory(id);setSearchQuery('');navigate('/explore');}} />
       <div key={location.pathname} className="vault-route flex flex-1 flex-col min-w-0">
 
       <Suspense fallback={<RequestState loading/>}><Routes>
@@ -49,6 +53,7 @@ function App() {
           path="/explore"
           element={
             <ExplorePage
+              customCategories={customCategories}
               searchQuery={searchQuery}
               activeCategory={activeCategory}
               onCategoryChange={setActiveCategory}

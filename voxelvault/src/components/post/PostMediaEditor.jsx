@@ -1,3 +1,4 @@
+import {notify} from '../../lib/notifications';
 import {MAX_POST_IMAGES} from '../../utils/attachments';
 import { confirmAction } from '../../lib/confirm';
 import Icon from '../ui/Icon';
@@ -37,9 +38,10 @@ function PostMediaEditor({ images, onChange, onAddFiles }) {
           </p>
         </div>
 
-        <span role="status" className={'rounded-full px-3 py-1 text-xs '+(images.length>=MAX_POST_IMAGES?'bg-amber-300/20 text-amber-200':images.length>=MAX_POST_IMAGES-5?'bg-amber-300/10 text-amber-200':'bg-primary/10 text-primary')}>
-          {images.length} / {MAX_POST_IMAGES} images{images.length>=MAX_POST_IMAGES ? (images.length>MAX_POST_IMAGES?' · Remove extra images':' · Limit reached') : ''}
-        </span>
+        <div className="vv-image-limit" data-level={images.length>=MAX_POST_IMAGES?'full':images.length>=MAX_POST_IMAGES-5?'near':'normal'}>
+          <p role="status">{images.length} / {MAX_POST_IMAGES} images{images.length>=MAX_POST_IMAGES&&<span>Maximum {MAX_POST_IMAGES} images reached.</span>}</p>
+          <div role="progressbar" aria-label="Post image limit" aria-valuemin={0} aria-valuemax={MAX_POST_IMAGES} aria-valuenow={Math.min(images.length,MAX_POST_IMAGES)}><span style={{width:Math.min(100,images.length/MAX_POST_IMAGES*100)+'%'}}/></div>
+        </div>
       </div>
 
       {activeImage ? (
@@ -61,9 +63,11 @@ function PostMediaEditor({ images, onChange, onAddFiles }) {
       )}
 
       <FileDropZone
+        disabled={images.length>=MAX_POST_IMAGES}
+        onDisabledAttempt={()=>notify("You've reached the 50-image limit.",'info')}
         label="Add images"
         prompt="Drag and drop images here"
-        hint="JPG, PNG, WebP, AVIF or GIF. Under 5 MB per image (5,000,000 bytes). Drop multiple images or choose files. Local preview only."
+        hint="JPG, PNG, WebP, AVIF or GIF. Up to 50 MB per image (50,000,000 bytes). Drop multiple images or choose files. Local preview only."
         accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
         onFiles={onAddFiles}
       />

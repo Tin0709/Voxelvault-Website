@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from "react";
 import Icon from './Icon';
 
-function FileDropZone({ label, prompt, hint, accept, onFiles, multiple = true, disabled = false }) {
+function FileDropZone({ label, prompt, hint, accept, onFiles, multiple = true, disabled = false, onDisabledAttempt }) {
   const inputId = useId();
   const inputRef = useRef(null);
   const depth = useRef(0);
@@ -21,7 +21,7 @@ function FileDropZone({ label, prompt, hint, accept, onFiles, multiple = true, d
     event.preventDefault();
     event.stopPropagation();
     resetDrag();
-    if (disabled) return;
+    if (disabled) { if(hasFiles(event))onDisabledAttempt?.(); return; }
     if (!hasFiles(event)) return;
 
     // Read entries synchronously while the drop's data store is accessible.

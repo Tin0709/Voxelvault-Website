@@ -27,12 +27,12 @@ function AccountMenu({onNavigate,pathname,user}){
   </div>
  </>;
 }
-export default function MobileMenu({user,busy,pathname,query,onSearch,onNavigate,onClose,onSignOut}){
+export default function MobileMenu({categories,onCategorySelect,user,busy,pathname,query,onSearch,onNavigate,onClose,onSignOut}){
 
  return <div className="vv-menu-content">
   <div className="vv-menu-top"><span>● YOUR VAULT</span><button type="button" onClick={onClose} aria-label="Close navigation"><Icon name="close"/></button></div>
   <div className="vv-menu-brand"><Brand onFollow={onNavigate}/><small>SPATIAL ARCHIVE</small></div>
-  <SearchField mobile searchQuery={query} onSearchChange={onSearch}/>
+  <SearchField categories={categories} onCategorySelect={onCategorySelect} mobile searchQuery={query} onSearchChange={onSearch}/>
   <nav aria-label="Mobile navigation" className="vv-menu-links">
    <MenuLink to="/explore" onNavigate={onNavigate} aria-current={pathname==='/explore'?'page':undefined} className="vv-menu-row"><span className="vv-menu-icon"><Icon name="compass"/></span><span><strong>Explore</strong><small>Discover worlds & creations</small></span><span className="vv-menu-chevron"><Icon name="chevronRight"/></span></MenuLink>
    {user&&<MenuLink to="/my-posts" onNavigate={onNavigate} aria-current={pathname==='/my-posts'?'page':undefined} className="vv-menu-row"><span className="vv-menu-icon"><Icon name="archive"/></span><span><strong>My Posts</strong><small>Manage your posts & files</small></span><span className="vv-menu-chevron"><Icon name="chevronRight"/></span></MenuLink>}

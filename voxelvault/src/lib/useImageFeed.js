@@ -25,5 +25,5 @@ export function useImageFeed(category,search,view='images') {
     catch(error){if(alive.current)setState(current=>({...current,loadingMore:false,error:error.message}));}
     finally{loadingMore.current=false;}
   }
-  return {...state,loadMore,retry};
+  return {...state,seed,loadMore,retry};
 }

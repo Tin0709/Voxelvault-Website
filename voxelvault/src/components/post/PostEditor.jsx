@@ -258,7 +258,13 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
     clearPreview();
   }
 
+  const addingImages=useRef(false);
   async function addImages(files) {
+    const remaining=Math.max(0,MAX_POST_IMAGES-draft.gallery.length);
+    if(files.length>remaining){notify(remaining?`You can add ${remaining} more images. Maximum ${MAX_POST_IMAGES} per post.`:"You've reached the 50-image limit.",'info');return;}
+    if(addingImages.current){notify('Please wait for the selected images to finish loading.','info');return;}
+    addingImages.current=true;
+    try {
     const allowedExtension = /\.(jpe?g|png|webp|avif|gif)$/i;
     const acceptedImages = [];
     const rejectedNames = [];
@@ -267,7 +273,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
       if (!isMounted.current) return;
 
       if (exceedsImageLimit(file)) {
-        rejectedNames.push(`${file.name} — ${formatBytes(file.size)} (must be under 5 MB)`);
+        rejectedNames.push(`${file.name} — ${formatBytes(file.size)} (maximum 50 MB)`);
         continue;
       }
 
@@ -333,6 +339,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
         ? `Images not added: ${rejectedNames.join(", ")}`
         : "",
     );
+    } finally { addingImages.current=false; }
   }
 
   function handlePreview(event) {
@@ -340,7 +347,7 @@ function PostEditor({ creation, mode = "edit", initialDraft, draftId, restoredPo
 
     if(draft.gallery.length>MAX_POST_IMAGES){setError('A post can contain at most 50 images. Remove extra images before previewing.');return;}
 
-    if(draft.gallery.some(image=>image.file&&exceedsImageLimit(image.file))){setError('Remove images of 5 MB or larger before previewing. Existing published images can stay.');return;}
+    if(draft.gallery.some(image=>image.file&&exceedsImageLimit(image.file))){setError('Remove images larger than 50 MB before previewing. Existing published images can stay.');return;}
     if (draft.gallery.length === 0) {
       notify('Please add at least one image.', 'error');
       setError("Please add at least one image.");

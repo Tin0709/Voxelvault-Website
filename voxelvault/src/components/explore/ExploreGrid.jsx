@@ -1,3 +1,4 @@
+import MultiImageCard,{isMultiCard} from './MultiImageCard';
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import ExploreCard,{CardSkeleton} from './ExploreCard';
 // Greedy placement uses collapsed card heights; hover never changes assignment.
@@ -10,11 +11,12 @@ export function balanceColumns(creations,columns,heights){
  }
  return groups;
 }
-export default function ExploreGrid({creations=[],onCreationClick,loading=false,loadingMore=false,rowOrder=false}){
+export default function ExploreGrid({creations=[],onCreationClick,loading=false,loadingMore=false,rowOrder=false,explore=false,seed=''}){
  const grid=useRef(null);
+ const placement=useRef({columns:0,slots:new Map()});
  const [heights,setHeights]=useState({});
- const [columns,setColumns]=useState(()=>window.innerWidth>=1280?4:window.innerWidth>=1024?3:window.innerWidth>=640?2:1);
- useEffect(()=>{const resize=()=>setColumns(window.innerWidth>=1280?4:window.innerWidth>=1024?3:window.innerWidth>=640?2:1);window.addEventListener('resize',resize);return()=>window.removeEventListener('resize',resize);},[]);
+ const [columns,setColumns]=useState(()=>window.innerWidth>=1280?4:window.innerWidth>=1024?3:window.innerWidth>=640||explore?2:1);
+ useEffect(()=>{const resize=()=>setColumns(window.innerWidth>=1280?4:window.innerWidth>=1024?3:window.innerWidth>=640||explore?2:1);window.addEventListener('resize',resize);return()=>window.removeEventListener('resize',resize);},[explore]);
  useLayoutEffect(()=>{
   if(loading||rowOrder||!grid.current)return;
   let frame;
@@ -37,7 +39,23 @@ export default function ExploreGrid({creations=[],onCreationClick,loading=false,
   measure();
   return()=>{cancelAnimationFrame(frame);observer.disconnect();};
  },[creations,columns,loading,rowOrder,heights]);
- const groups=balanceColumns(creations,columns,heights);
+ const multiIds=new Set(),seenPosts=new Set();
+ for(const creation of creations){const postId=creation.postId||creation.id;if(explore&&!seenPosts.has(postId)&&isMultiCard(creation,seed)){multiIds.add(creation.id);seenPosts.add(postId);}}
+ let groups;
+ if(explore){
+  // Keep mounted results in their columns as images load or carousel state changes.
+  // Append new results to the shortest measured column; resize rebuilds placement.
+  if(placement.current.columns!==columns)placement.current={columns,slots:new Map()};
+  const {slots}=placement.current,totals=Array(columns).fill(0);
+  groups=Array.from({length:columns},()=>[]);
+  for(const creation of creations){
+   const column=slots.has(creation.id)?slots.get(creation.id):totals.indexOf(Math.min(...totals));
+   slots.set(creation.id,column);groups[column].push(creation);
+   const width=(grid.current?.clientWidth||window.innerWidth-32)/columns;
+   totals[column]+=(heights[creation.id]||(multiIds.has(creation.id)?width*1.25+96:width*.625+96))+20;
+  }
+ }else groups=balanceColumns(creations,columns,heights);
+ const card=creation=>multiIds.has(creation.id)?<MultiImageCard key={creation.id} creation={creation} onOpen={onCreationClick}/>:<ExploreCard key={creation.id} creation={creation} onOpen={onCreationClick}/>;
  // Reserve exactly the last card's hidden details in each masonry column.
  // As it opens, consume that space so the grid/footer stay at the same height.
  useLayoutEffect(()=>{
@@ -55,5 +73,5 @@ export default function ExploreGrid({creations=[],onCreationClick,loading=false,
  },[creations,columns,loading,loadingMore,rowOrder,heights]);
  if(rowOrder)return <div className="vv-portfolio-grid grid items-start gap-5" style={{gridTemplateColumns:`repeat(${columns},minmax(0,1fr))`}}>{creations.map(creation=><ExploreCard key={creation.id} creation={creation} onOpen={onCreationClick}/>)}{(loading||loadingMore)&&Array.from({length:columns*2},(_,i)=><CardSkeleton key={i}/>)}</div>;
  if(!loading&&!creations.length)return <p className="py-16 text-center text-on-surface-variant">No matching images. Try another category or keyword.</p>;
- return <div ref={grid} className="grid items-start gap-5" style={{gridTemplateColumns:`repeat(${columns},minmax(0,1fr))`}} aria-busy={loading||loadingMore}>{Array.from({length:columns},(_,column)=><div key={column} className="flex min-w-0 flex-col gap-5">{loading?Array.from({length:2},(_,i)=><CardSkeleton key={i}/>):groups[column].map(creation=><ExploreCard key={creation.id} creation={creation} onOpen={onCreationClick}/>)}{loadingMore&&Array.from({length:2},(_,i)=><CardSkeleton key={`more-${i}`}/>)}</div>)}</div>;
+ return <div ref={grid} className={'grid items-start gap-5 '+(explore?'vv-explore-grid':'')} style={{gridTemplateColumns:`repeat(${columns},minmax(0,1fr))`}} aria-busy={loading||loadingMore}>{Array.from({length:columns},(_,column)=><div key={column} className="flex min-w-0 flex-col gap-5">{loading?Array.from({length:2},(_,i)=><CardSkeleton key={i}/>):groups[column].map(card)}{loadingMore&&Array.from({length:2},(_,i)=><CardSkeleton key={`more-${i}`}/>)}</div>)}</div>;
 }

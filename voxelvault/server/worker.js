@@ -487,14 +487,18 @@ async function profileFor(id) {
         });
         return {items,next:rows.length>30?page.at(-1).sort_key:null};
       }
-      const descriptions=page.length?checked(await db.from('posts').select('id,description').in('id',[...new Set(page.map(row=>row.post_id))])):[];
+      const descriptions=page.length?checked(await db.from('posts').select('id,description,post_images(position,alt,upload_sessions(id,provider,bucket,object_key,status,kind,owner_id))').in('id',[...new Set(page.map(row=>row.post_id))])):[];
       const byPost=new Map(descriptions.map(post=>[post.id,post.description]));
+      const previews=new Map(descriptions.map(post=>[post.id,(post.post_images||[])
+        .filter(item=>item.upload_sessions?.status==='ready'&&item.upload_sessions.kind==='image')
+        .sort((a,b)=>a.position-b.position).slice(0,5)
+        .map(item=>({id:item.upload_sessions.id,src:publicImage(item.upload_sessions),alt:item.alt}))]));
       const imageIds=[...new Set(page.map(row=>row.image_id))];
       const files=imageIds.length?checked(await db.from('upload_sessions').select('*').in('id',imageIds)):[];
       const byImage=new Map(files.map(f=>[f.id,f]));
       const profiles=await feedProfiles(page.map(row=>row.creator_id));
       const avatars=new Map([...profiles].map(([id,profile])=>[id,profile.avatarUrl]));
-      return {items:page.map(row=>({id:row.image_id,postId:row.post_id,imageId:row.image_id,title:row.title,description:byPost.get(row.post_id)||'',category:row.category,creator:row.creator,creatorId:row.creator_id,image:publicImage(byImage.get(row.image_id)||row),alt:row.alt,creatorAvatar:avatars.get(row.creator_id)||''})),next:rows.length>30?page.at(-1).sort_key:null};
+      return {items:page.map(row=>({id:row.image_id,postId:row.post_id,imageId:row.image_id,previewImages:previews.get(row.post_id)||[],title:row.title,description:byPost.get(row.post_id)||'',category:row.category,creator:row.creator,creatorId:row.creator_id,image:publicImage(byImage.get(row.image_id)||row),alt:row.alt,creatorAvatar:avatars.get(row.creator_id)||''})),next:rows.length>30?page.at(-1).sort_key:null};
     }
     if (path === '/api/posts' && request.method === 'GET') {
       const mine = url.searchParams.get('mine') === 'true';

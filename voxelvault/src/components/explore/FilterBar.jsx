@@ -1,14 +1,6 @@
-const categories = [
-  { id: "all", label: "All builds" },
-  { id: "architecture", label: "Architecture" },
-  { id: "landscapes", label: "Landscapes" },
-  { id: "survival", label: "Survival" },
-  { id: "fantasy", label: "Fantasy" },
-  { id: "redstone", label: "Redstone" },
-];
-
+import {categoryOptions} from '../../lib/categories';
 function FilterBar({ activeCategory, onCategoryChange, customCategories = [] }) {
-  const options = [...categories, ...customCategories.filter(id=>!categories.some(c=>c.id===id)).map(id=>({id,label:id}))];
+  const options = categoryOptions(customCategories);
   return (
     <section
       aria-label="Filter creations"
