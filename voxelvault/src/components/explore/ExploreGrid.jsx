@@ -1,6 +1,12 @@
 import MultiImageCard,{isMultiCard} from './MultiImageCard';
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import ExploreCard,{CardSkeleton} from './ExploreCard';
+// Stable across image loads and carousel updates; shared by both card types.
+export function showTouchTitle(creation,seed){
+ let hash=2166136261;
+ for(const char of `title:${seed}:${creation.postId||creation.id}`)hash=Math.imul(hash^char.charCodeAt(0),16777619);
+ return (hash>>>0)%3===0;
+}
 // Greedy placement uses collapsed card heights; hover never changes assignment.
 export function balanceColumns(creations,columns,heights){
  const groups=Array.from({length:columns},()=>[]),totals=Array(columns).fill(0);
@@ -55,7 +61,7 @@ export default function ExploreGrid({creations=[],onCreationClick,loading=false,
    totals[column]+=(heights[creation.id]||(multiIds.has(creation.id)?width*1.25+96:width*.625+96))+20;
   }
  }else groups=balanceColumns(creations,columns,heights);
- const card=creation=>multiIds.has(creation.id)?<MultiImageCard key={creation.id} creation={creation} onOpen={onCreationClick}/>:<ExploreCard key={creation.id} creation={creation} onOpen={onCreationClick}/>;
+ const card=creation=>multiIds.has(creation.id)?<MultiImageCard key={creation.id} creation={creation} touchTitle={showTouchTitle(creation,seed)} onOpen={onCreationClick}/>:<ExploreCard key={creation.id} creation={creation} touchTitle={showTouchTitle(creation,seed)} onOpen={onCreationClick}/>;
  // Reserve exactly the last card's hidden details in each masonry column.
  // As it opens, consume that space so the grid/footer stay at the same height.
  useLayoutEffect(()=>{

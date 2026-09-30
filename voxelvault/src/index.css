@@ -388,3 +388,33 @@ body {
 .vv-multi-position i{width:5px;height:5px;border-radius:999px;background:#68dba9;opacity:.5;transition:width .25s,opacity .25s}.vv-multi-position i[data-active=true]{width:16px;opacity:1}
 @media(max-width:639px){.vv-explore-grid,.vv-explore-grid>div{gap:10px}.vv-explore-grid .vv-explore-card{border-radius:14px}.vv-explore-grid .vv-card-category{top:7px;left:7px;max-width:calc(100% - 14px);padding:3px 5px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vv-explore-grid .p-4{padding:10px}.vv-explore-grid h2{font-size:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.vv-explore-grid .text-xs{font-size:10px}.vv-explore-grid .vv-card-open{display:none}.vv-explore-grid .h-7{height:22px;width:22px;flex-shrink:0}}
 @media(prefers-reduced-motion:reduce){.vv-image-limit [role=progressbar]>span,.vv-multi-arrow,.vv-multi-position i{transition:none}}
+.vv-multi-touch-position{display:none}
+/* Capability-gated: narrow mouse windows retain the existing Explore cards. */
+@media(max-width:639px) and (pointer:coarse),(max-width:639px) and (hover:none){
+ .vv-explore-grid,.vv-explore-grid>div{gap:7px}
+ .vv-explore-grid .vv-explore-card{background:transparent;border:0;box-shadow:none;border-radius:0}
+ .vv-explore-grid .vv-card-image,.vv-explore-grid .vv-multi-media{border-radius:14px}
+ .vv-explore-grid .vv-card-category,.vv-explore-grid .vv-card-creator,.vv-explore-grid .vv-card-details,.vv-explore-grid .vv-card-sheen,.vv-explore-grid .vv-multi-arrow,.vv-explore-grid .vv-multi-media>.vv-multi-position{display:none}
+ .vv-explore-grid .vv-card-caption,.vv-explore-grid .vv-multi-caption{display:none;padding:5px 2px 3px}
+ .vv-explore-grid [data-touch-title=true] .vv-card-caption,.vv-explore-grid [data-touch-title=true] .vv-multi-caption{display:block}
+ .vv-explore-grid h2{font-size:12px;line-height:1.4}
+ .vv-explore-grid .vv-multi-touch-position{display:flex;justify-content:center;padding-top:3px}
+ .vv-explore-grid .vv-multi-touch-position .vv-multi-position{position:static;transform:none;padding:4px 0;gap:5px}
+ .vv-explore-grid .vv-multi-position i{width:4px;height:4px}
+ .vv-explore-grid .vv-multi-position i[data-active=true]{width:12px}
+ .vv-explore-grid .vv-skeleton{border:0;border-radius:14px}
+ .vv-explore-grid .vv-skeleton>.p-5{display:none}
+ .vv-explore-grid .vv-skeleton-picture{height:auto;aspect-ratio:8/5;gap:8px;border:0}
+ .vv-explore-grid .vv-image-pending{min-height:100px;aspect-ratio:8/5}
+ .vv-explore-grid .vv-image-pending>.vv-skeleton{position:absolute;inset:0}
+ .vv-explore-grid .vv-image-pending .vv-skeleton-picture,.vv-explore-grid .vv-multi-media .vv-skeleton-picture{height:100%;aspect-ratio:auto}
+ .vv-explore-grid .vv-skeleton-picture>span:last-child{font-size:8px;letter-spacing:.05em}
+}
+.vv-site-background-static{background-image:none}
+.vv-site-background-static::after{content:none;animation:none}
+/* CSS also stops effects immediately while a capability change reaches React. */
+@media(hover:none),(pointer:coarse),(prefers-reduced-motion:reduce){
+ .vv-site-background{background-image:none}
+ .vv-site-background>*{display:none;animation:none!important}
+ .vv-site-background::after{content:none;animation:none}
+}
