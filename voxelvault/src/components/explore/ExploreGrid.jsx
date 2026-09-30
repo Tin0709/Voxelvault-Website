@@ -1,4 +1,4 @@
-import MultiImageCard,{isMultiCard} from './MultiImageCard';
+import MultiImageCard,{previewImages} from './MultiImageCard';
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import ExploreCard,{CardSkeleton} from './ExploreCard';
 // Stable across image loads and carousel updates; shared by both card types.
@@ -6,6 +6,31 @@ export function showTouchTitle(creation,seed){
  let hash=2166136261;
  for(const char of `title:${seed}:${creation.postId||creation.id}`)hash=Math.imul(hash^char.charCodeAt(0),16777619);
  return (hash>>>0)%3===0;
+}
+// Walk only the current results prefix: appending pages cannot rewrite old slots.
+export function showcaseItems(creations,seed){
+ let hash=2166136261;
+ for(const char of String(seed))hash=Math.imul(hash^char.charCodeAt(0),16777619);
+ const first=4+(hash>>>0)%3,pool=[],seen=new Set(),uses=new Map(),items=[];
+ let previous=null,lastPosition=-Infinity,cursor=(hash>>>0);
+ for(let position=0;position<creations.length;position++){
+  const creation=creations[position],postId=creation.postId||creation.id;
+  items.push(creation);
+  const previews=previewImages(creation);
+  if(previews.length>=2&&!seen.has(postId)){seen.add(postId);pool.push({creation,postId,previews});}
+  if(position+1<first||(position+1-first)%6!==0||!pool.length)continue;
+  // A lone source gets twice the spacing; otherwise never repeat adjacent sources.
+  if(pool.length===1&&previous===pool[0].postId&&position-lastPosition<12)continue;
+  let chosen=cursor%pool.length;
+  if(pool[chosen].postId===previous&&pool.length>1)chosen=(chosen+1)%pool.length;
+  const source=pool[chosen],occurrence=uses.get(source.postId)||0;
+  const rotation=occurrence%source.previews.length;
+  const previewsRotated=[...source.previews.slice(rotation),...source.previews.slice(0,rotation)];
+  items.push({...source.creation,id:JSON.stringify(['showcase',seed,position,source.postId]),postId:source.postId,
+   showcase:true,imageId:previewsRotated[0].id,image:previewsRotated[0].src,alt:previewsRotated[0].alt,previewImages:previewsRotated});
+  uses.set(source.postId,occurrence+1);previous=source.postId;lastPosition=position;cursor=chosen+1;
+ }
+ return items;
 }
 // Greedy placement uses collapsed card heights; hover never changes assignment.
 export function balanceColumns(creations,columns,heights){
@@ -45,8 +70,7 @@ export default function ExploreGrid({creations=[],onCreationClick,loading=false,
   measure();
   return()=>{cancelAnimationFrame(frame);observer.disconnect();};
  },[creations,columns,loading,rowOrder,heights]);
- const multiIds=new Set(),seenPosts=new Set();
- for(const creation of creations){const postId=creation.postId||creation.id;if(explore&&!seenPosts.has(postId)&&isMultiCard(creation,seed)){multiIds.add(creation.id);seenPosts.add(postId);}}
+ const items=explore?showcaseItems(creations,seed):creations;
  let groups;
  if(explore){
   // Keep mounted results in their columns as images load or carousel state changes.
@@ -54,14 +78,14 @@ export default function ExploreGrid({creations=[],onCreationClick,loading=false,
   if(placement.current.columns!==columns)placement.current={columns,slots:new Map()};
   const {slots}=placement.current,totals=Array(columns).fill(0);
   groups=Array.from({length:columns},()=>[]);
-  for(const creation of creations){
+  for(const creation of items){
    const column=slots.has(creation.id)?slots.get(creation.id):totals.indexOf(Math.min(...totals));
    slots.set(creation.id,column);groups[column].push(creation);
    const width=(grid.current?.clientWidth||window.innerWidth-32)/columns;
-   totals[column]+=(heights[creation.id]||(multiIds.has(creation.id)?width*1.25+96:width*.625+96))+20;
+   totals[column]+=(heights[creation.id]||(creation.showcase?width*1.25+96:width*.625+96))+20;
   }
  }else groups=balanceColumns(creations,columns,heights);
- const card=creation=>multiIds.has(creation.id)?<MultiImageCard key={creation.id} creation={creation} touchTitle={showTouchTitle(creation,seed)} onOpen={onCreationClick}/>:<ExploreCard key={creation.id} creation={creation} touchTitle={showTouchTitle(creation,seed)} onOpen={onCreationClick}/>;
+ const card=creation=>creation.showcase?<MultiImageCard key={creation.id} creation={creation} touchTitle={showTouchTitle(creation,seed)} onOpen={onCreationClick}/>:<ExploreCard key={creation.id} creation={creation} touchTitle={showTouchTitle(creation,seed)} onOpen={onCreationClick}/>;
  // Reserve exactly the last card's hidden details in each masonry column.
  // As it opens, consume that space so the grid/footer stay at the same height.
  useLayoutEffect(()=>{

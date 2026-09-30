@@ -7,12 +7,6 @@ export function previewImages(creation){
  const first=creation.imageId?{id:creation.imageId,src:creation.image,alt:creation.alt}:null;
  return [...(first?[first]:[]),...images].filter((image,index,all)=>image.id&&image.src&&all.findIndex(other=>other.id===image.id)===index).slice(0,5);
 }
-export function isMultiCard(creation,seed){
- if(previewImages(creation).length<2)return false;
- let hash=2166136261;
- for(const char of `${seed}:${creation.postId||creation.id}`)hash=Math.imul(hash^char.charCodeAt(0),16777619);
- return (hash>>>0)%4===0;
-}
 export default function MultiImageCard({creation,onOpen,touchTitle=false}){
  const images=previewImages(creation);
  const [index,setIndex]=useState(0);
@@ -43,7 +37,8 @@ export default function MultiImageCard({creation,onOpen,touchTitle=false}){
  }
  function open(){if(!moving.current)onOpen({...creation,postId:creation.postId||creation.id,imageId:active.id});}
  const slides=transition?[transition.from,transition.to]:[index%images.length];
- const pagination=<span className="vv-multi-position" role="status" aria-label={`Image ${index+1} of ${images.length}`}>{images.map((image,i)=><i key={image.id} data-active={i===index}/>)}</span>;
+ const indicatorIndex=transition?.to??index;
+ const pagination=<span className="vv-multi-position" role="status" aria-label={`Image ${indicatorIndex+1} of ${images.length}`}>{images.map((image,i)=><i key={image.id} data-active={i===indicatorIndex}/>)}</span>;
  return <article data-card-id={creation.id} data-touch-title={touchTitle} className="vv-explore-card vv-multi-card">
   <div className="vv-multi-media" aria-busy={Boolean(transition)} style={{touchAction:'pan-y','--slide-direction':transition?.direction||1}}
    onPointerDown={e=>{if(e.button!==0||e.target.closest('.vv-multi-arrow'))return;suppressClick.current=false;gesture.current={id:e.pointerId,x:e.clientX,y:e.clientY};}}
