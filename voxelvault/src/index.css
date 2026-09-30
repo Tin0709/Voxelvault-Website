@@ -365,17 +365,26 @@ body {
 .vv-image-limit[data-level=near]{color:#f4ca75}.vv-image-limit[data-level=full]{color:#f58e8e}
 .vv-multi-card,.vv-multi-card:is(:hover,:focus-within){box-shadow:none;border-color:#ffffff16}
 .vv-multi-media{position:relative;aspect-ratio:4/5;overflow:hidden;background:#0d1011;user-select:none}
-.vv-multi-media>a{display:block;width:100%;height:100%}
+.vv-multi-media>a{display:block;position:absolute;inset:0;width:100%;height:100%}
+.vv-multi-slide-in{animation:vv-multi-enter .32s cubic-bezier(.2,.7,.2,1) both}
+.vv-multi-slide-out{animation:vv-multi-leave .32s cubic-bezier(.2,.7,.2,1) both}
+@keyframes vv-multi-enter{from{transform:translateX(calc(var(--slide-direction)*100%))}to{transform:translateX(0)}}
+@keyframes vv-multi-leave{from{transform:translateX(0)}to{transform:translateX(calc(var(--slide-direction)*-100%))}}
+@media(prefers-reduced-motion:reduce){.vv-multi-slide-in,.vv-multi-slide-out{animation-duration:.01ms!important}}
 .vv-multi-media>a>img{width:100%;height:100%;object-fit:cover;transform:none;transition:none}
 .vv-multi-media .vv-skeleton{position:absolute;inset:0;height:100%;border:0;border-radius:0}
 .vv-multi-media .vv-skeleton-picture{height:100%}
 .vv-multi-media .vv-card-category{pointer-events:none}
 .vv-multi-error{display:grid;place-items:center;height:100%;font-size:12px;color:#aebeb4}
-.vv-multi-arrow{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;display:grid;place-items:center;border-radius:50%;background:#0e10108c;backdrop-filter:blur(10px);color:#d4e7dd;opacity:0;pointer-events:none;transition:opacity .2s}
+.vv-multi-arrow{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;display:grid;place-items:center;border-radius:50%;background:#0e10108c;backdrop-filter:blur(10px);color:#8be6bc;border:1px solid #ffffff14;opacity:0;pointer-events:none;transition:opacity .2s,background .2s,color .2s,border-color .2s,transform .2s}
+.vv-multi-arrow:is(:focus-visible,:active){color:#062717;background:#68dba9;border-color:#68dba9;opacity:1!important}
+.vv-multi-arrow:focus-visible{outline:2px solid #d6f6e6;outline-offset:2px}
+.vv-multi-arrow:active{transform:translateY(-50%) scale(.94)}
+@media(hover:hover) and (pointer:fine){.vv-multi-arrow:hover{color:#062717;background:#68dba9;border-color:#68dba9;opacity:1!important}}
 .vv-multi-arrow svg{width:16px;height:16px}.vv-multi-prev{left:8px}.vv-multi-next{right:8px}
 @media(hover:hover) and (pointer:fine){.vv-multi-card:is(:hover,:focus-within) .vv-multi-arrow{opacity:.85;pointer-events:auto}}
 @media(hover:none),(pointer:coarse){.vv-multi-arrow{opacity:.65;pointer-events:auto}}
-.vv-multi-position{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:5px;padding:5px 8px;border-radius:20px;background:#0e101077;pointer-events:none}
-.vv-multi-position i{width:4px;height:4px;border-radius:50%;background:#b4c5bd}.vv-multi-position i[data-active=true]{width:12px;background:#68dba9}
+.vv-multi-position{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:5px 0;pointer-events:none}
+.vv-multi-position i{width:5px;height:5px;border-radius:999px;background:#68dba9;opacity:.5;transition:width .25s,opacity .25s}.vv-multi-position i[data-active=true]{width:16px;opacity:1}
 @media(max-width:639px){.vv-explore-grid,.vv-explore-grid>div{gap:10px}.vv-explore-grid .vv-explore-card{border-radius:14px}.vv-explore-grid .vv-card-category{top:7px;left:7px;max-width:calc(100% - 14px);padding:3px 5px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vv-explore-grid .p-4{padding:10px}.vv-explore-grid h2{font-size:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.vv-explore-grid .text-xs{font-size:10px}.vv-explore-grid .vv-card-open{display:none}.vv-explore-grid .h-7{height:22px;width:22px;flex-shrink:0}}
-@media(prefers-reduced-motion:reduce){.vv-image-limit [role=progressbar]>span,.vv-multi-arrow{transition:none}}
+@media(prefers-reduced-motion:reduce){.vv-image-limit [role=progressbar]>span,.vv-multi-arrow,.vv-multi-position i{transition:none}}
