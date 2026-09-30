@@ -418,3 +418,36 @@ body {
  .vv-site-background>*{display:none;animation:none!important}
  .vv-site-background::after{content:none;animation:none}
 }
+/* My Posts uses sibling links so editing never activates the View Post link. */
+.vv-my-post-view{outline-offset:-3px}
+.vv-my-post-edit{position:absolute;top:8px;right:8px;z-index:1;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;border:1px solid #ffffff26;background:#101815df;color:#8cecc0;transition:opacity .2s,background .2s}
+.vv-my-post-edit svg{width:18px;height:18px}
+.vv-my-post-edit:hover{background:#213b2e}
+.vv-my-post-edit:focus-visible{outline:2px solid #68dba9;outline-offset:2px}
+@media(hover:hover) and (pointer:fine){
+ .vv-my-post-edit{opacity:0;pointer-events:none}
+ .vv-my-post-card:is(:hover,:focus-within) .vv-my-post-edit{opacity:1;pointer-events:auto}
+}
+@media(hover:none),(pointer:coarse),(any-pointer:coarse){
+ .vv-my-post-edit{opacity:1;pointer-events:auto}
+}
+@media(prefers-reduced-motion:reduce){.vv-my-post-edit{transition:none}}
+@media(max-width:639px){
+ .vv-footer-strip,.vv-footer-invite,.vv-footer-features{display:none}
+ .vv-footer-top-button{align-self:center}
+ .vv-footer-grid{margin-top:20px}
+ .vv-footer-vault{grid-column:1/-1;text-align:center}
+ .vv-footer-vault h2{justify-content:center}
+ .vv-footer-vault ul{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 16px}
+ .vv-footer-vault li a{justify-content:center}
+}
+@media(max-width:767px){
+ .vv-home-actions{justify-content:center}
+ .vv-home-note{justify-content:center;text-align:center;margin-top:22px;gap:8px;line-height:1.6}
+ .vv-home-note svg{flex-shrink:0}
+ .vv-latest-heading{align-items:center;text-align:center}
+ .vv-latest-heading .vv-home-eyebrow{justify-content:center}
+ .vv-latest-heading h2{margin-left:auto;margin-right:auto;text-wrap:balance}
+ .vv-latest-category-select{max-width:400px;margin-left:auto;margin-right:auto}
+ .vv-latest-category-select select{min-width:0}
+}

@@ -106,12 +106,12 @@ function MyPostsPage() {
             return (
               <article
                 key={creation.id}
-                className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
+                className="vv-my-post-card relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
               >
                 <Link
                   to={detailUrl}
                   aria-label={`View ${creation.title}`}
-                  className="group block overflow-hidden bg-black/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                  className="vv-my-post-view group flex h-full flex-1 flex-col focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                 >
                   <img
                     src={creation.image}
@@ -119,20 +119,13 @@ function MyPostsPage() {
                     loading="lazy"
                     className="aspect-video w-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.03]"
                   />
-                </Link>
-
                 <div className="flex flex-1 flex-col p-5">
                   <p className="text-xs capitalize text-primary">
                     {creation.category}
                   </p>
 
                   <h2 className="mt-2 break-words font-headline-lg text-xl">
-                    <Link
-                      to={detailUrl}
-                      className="transition hover:text-primary"
-                    >
-                      {creation.title}
-                    </Link>
+                    {creation.title}
                   </h2>
 
                   <p className="mt-3 text-xs text-on-surface-variant">
@@ -141,22 +134,10 @@ function MyPostsPage() {
                     {creation.attachments?.length ?? 0} private attachments
                   </p>
 
-                  <div className="mt-auto flex flex-wrap gap-3 pt-6">
-                    <Link
-                      to={detailUrl}
-                      className="rounded-full border border-white/15 px-4 py-2 text-sm transition hover:bg-white/5"
-                    >
-                      View post
-                    </Link>
 
-                    <Link
-                      to={`${detailUrl}/edit`}
-                      className="rounded-full bg-primary/10 px-4 py-2 text-sm text-primary transition hover:bg-primary/20"
-                    >
-                      Edit post
-                    </Link>
-                  </div>
                 </div>
+                </Link>
+                <Link to={`${detailUrl}/edit`} aria-label={`Edit post: ${creation.title}`} onClick={event=>event.stopPropagation()} className="vv-my-post-edit"><Icon name="edit"/></Link>
               </article>
             );
           })}
@@ -180,7 +161,7 @@ function MyPostsPage() {
           )}
         </div>
       )}
-      {data?.hasMore && <button type="button" disabled={loadingMore} onClick={loadMore} className="mt-8 rounded-full border border-primary/40 px-6 py-3 text-primary">{loadingMore ? <span className="inline-flex items-center gap-2"><VaultLoader compact/>Loading…</span> : 'Load more posts'}</button>}
+      {data?.hasMore && <button type="button" disabled={loadingMore} onClick={loadMore} className="mx-auto mt-8 block rounded-full border border-primary/40 px-6 py-3 text-primary">{loadingMore ? <span className="inline-flex items-center gap-2"><VaultLoader compact/>Loading…</span> : 'Load more posts'}</button>}
     </main>
   );
 }
