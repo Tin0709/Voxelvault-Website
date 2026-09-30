@@ -114,7 +114,7 @@ function CreatorProfilePage({ own = false }) {
           </h2>
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Filter portfolio">{['all',...new Set(creatorPosts.map(p=>p.category))].map(c=><button type="button" key={c} aria-pressed={category===c} onClick={()=>setCategory(c)} className={category===c?'rounded-full bg-primary px-4 py-2 text-sm text-on-primary':'rounded-full bg-white/5 px-4 py-2 text-sm text-on-surface-variant'}>{c==='all'?'All creations':c}</button>)}</div>
+        <div className="vv-profile-categories mb-6 flex flex-wrap gap-2" role="group" aria-label="Filter portfolio">{['all',...new Set(creatorPosts.map(p=>p.category))].map(c=><button type="button" key={c} aria-pressed={category===c} onClick={()=>setCategory(c)} className={category===c?'rounded-full bg-primary px-4 py-2 text-sm text-on-primary':'rounded-full bg-white/5 px-4 py-2 text-sm text-on-surface-variant'}>{c==='all'?'All creations':c}</button>)}</div>
         {creatorPosts.length > 0 ? (
           <ExploreGrid loadingMore={posts.loadingMore}
             creations={creatorPosts.filter(p=>category==='all'||p.category===category)}
