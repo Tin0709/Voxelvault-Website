@@ -37,11 +37,6 @@ function PostMediaEditor({ images, onChange, onAddFiles }) {
             Add images and choose a cover. Published images are public and can be saved by visitors.
           </p>
         </div>
-
-        <div className="vv-image-limit" data-level={images.length>=MAX_POST_IMAGES?'full':images.length>=MAX_POST_IMAGES-5?'near':'normal'}>
-          <p role="status">{images.length} / {MAX_POST_IMAGES} images{images.length>=MAX_POST_IMAGES&&<span>Maximum {MAX_POST_IMAGES} images reached.</span>}</p>
-          <div role="progressbar" aria-label="Post image limit" aria-valuemin={0} aria-valuemax={MAX_POST_IMAGES} aria-valuenow={Math.min(images.length,MAX_POST_IMAGES)}><span style={{width:Math.min(100,images.length/MAX_POST_IMAGES*100)+'%'}}/></div>
-        </div>
       </div>
 
       {activeImage ? (
@@ -121,6 +116,10 @@ function PostMediaEditor({ images, onChange, onAddFiles }) {
           ))}
         </div>
       )}
+      <div className="vv-image-limit mt-3" data-level={images.length>=MAX_POST_IMAGES?'full':images.length>=MAX_POST_IMAGES-5?'near':'normal'}>
+        <p role="status">{images.length} / {MAX_POST_IMAGES} images{images.length>=MAX_POST_IMAGES&&<span>Maximum {MAX_POST_IMAGES} images reached.</span>}</p>
+        <div role="progressbar" aria-label="Post image limit" aria-valuemin={0} aria-valuemax={MAX_POST_IMAGES} aria-valuenow={Math.min(images.length,MAX_POST_IMAGES)}><span style={{width:Math.min(100,images.length/MAX_POST_IMAGES*100)+'%'}}/></div>
+      </div>
     </section>
   );
 }
