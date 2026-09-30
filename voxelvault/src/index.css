@@ -467,3 +467,6 @@ body {
  .vv-profile-categories>button{min-width:0;min-height:40px;padding:8px 10px;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
  .vv-profile-categories>button:last-child:nth-child(odd){grid-column:1/-1}
 }
+.vv-explore-result-summary{display:flex;flex:1;flex-wrap:wrap;align-items:center;gap:4px 6px;min-width:0}
+.vv-explore-search-label{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vv-explore-result-count{white-space:nowrap}
