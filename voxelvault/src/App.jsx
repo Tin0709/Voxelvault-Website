@@ -1,3 +1,4 @@
+import ExploreSession from './components/explore/ExploreSession';
 import {useApi} from './lib/useApi';
 import {categoryOptions} from './lib/categories';
 import RequestState from './components/ui/RequestState';
@@ -21,6 +22,7 @@ import ConfirmHost from './components/ui/ConfirmHost';
 const DraftPage=lazy(()=>import('./pages/DraftPage'));
 
 function App() {
+  const [exploreReset,setExploreReset]=useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
 
@@ -30,6 +32,7 @@ function App() {
   const location = useLocation();
 
   function resetExplore() {
+    setExploreReset(value=>value+1);
     setSearchQuery('');
     setActiveCategory('all');
   }
@@ -45,21 +48,15 @@ function App() {
   return (
     <div className="vv-app flex min-h-screen flex-col font-body-md text-on-surface">
       <SiteBackground/><Header searchQuery={searchQuery} onSearchChange={handleSearchChange} onExplore={resetExplore} categories={categoryOptions(customCategories)} onCategorySelect={id=>{setActiveCategory(id);setSearchQuery('');navigate('/explore');}} />
-      <div key={location.pathname} className="vault-route flex flex-1 flex-col min-w-0">
+      <ExploreSession resetVersion={exploreReset}>
+        <Suspense fallback={<RequestState loading/>}><ExplorePage customCategories={customCategories}
+          searchQuery={searchQuery} activeCategory={activeCategory} onCategoryChange={setActiveCategory}/></Suspense>
+      </ExploreSession>
+      <div key={location.pathname} style={location.pathname==='/explore'?{display:'none'}:undefined} className="vault-route flex flex-1 flex-col min-w-0">
 
       <Suspense fallback={<RequestState loading/>}><Routes>
         <Route path="/" element={<HomePage />} />
-        <Route
-          path="/explore"
-          element={
-            <ExplorePage
-              customCategories={customCategories}
-              searchQuery={searchQuery}
-              activeCategory={activeCategory}
-              onCategoryChange={setActiveCategory}
-            />
-          }
-        />
+        <Route path="/explore" element={null} />
         <Route path="/create" element={<RequireAuth><CreatePostPage /></RequireAuth>} />
         <Route path="/drafts/:id" element={<RequireAuth><DraftPage /></RequireAuth>} />
         <Route path="/my-posts" element={<RequireAuth><MyPostsPage /></RequireAuth>} />
