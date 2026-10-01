@@ -365,8 +365,15 @@ body {
 .vv-image-limit[data-level=near]{color:#f4ca75}.vv-image-limit[data-level=full]{color:#f58e8e}
 .vv-multi-card,.vv-multi-card:is(:hover,:focus-within){box-shadow:none;border-color:#ffffff16}
 .vv-multi-media{position:relative;aspect-ratio:4/5;overflow:hidden;background:#0d1011;user-select:none}
-.vv-multi-track{position:absolute;inset:0;will-change:transform}
+.vv-multi-track{position:absolute;inset:0}
 .vv-multi-track>a{display:block;position:absolute;inset:0;width:100%;height:100%}
+.vv-multi-native{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;touch-action:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.vv-multi-native::-webkit-scrollbar{display:none}
+.vv-multi-native>a{position:relative;inset:auto;flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always}
+.vv-multi-card[data-native-scroll=true] .vv-multi-media>.vv-multi-position{display:none}
+.vv-multi-card[data-native-scroll=true] .vv-multi-touch-position{display:flex;justify-content:center;padding-top:3px}
+.vv-multi-card[data-native-scroll=true] .vv-multi-touch-position .vv-multi-position{position:static;transform:none;padding:4px 0}
+
 .vv-multi-slide-in{animation:vv-multi-enter .32s cubic-bezier(.2,.7,.2,1) both}
 .vv-multi-slide-out{animation:vv-multi-leave .32s cubic-bezier(.2,.7,.2,1) both}
 @keyframes vv-multi-enter{from{transform:translateX(calc(var(--slide-direction)*100%))}to{transform:translateX(0)}}
