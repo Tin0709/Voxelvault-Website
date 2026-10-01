@@ -463,9 +463,8 @@ body {
  .vv-explore-results-row{gap:8px;margin-bottom:16px}
  .vv-explore-results-row>p{font-size:12px;min-width:0}
  .vv-explore-view-toggle{gap:7px;padding:8px 10px;font-size:12px}
- .vv-profile-categories{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:20px}
- .vv-profile-categories>button{min-width:0;min-height:40px;padding:8px 10px;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
- .vv-profile-categories>button:last-child:nth-child(odd){grid-column:1/-1}
+ .vv-profile-categories{gap:6px;margin-bottom:20px}
+ .vv-profile-categories>button{min-height:40px;padding:8px 12px;font-size:12px;line-height:1.4}
 }
 .vv-explore-result-summary{display:flex;flex:1;flex-wrap:wrap;align-items:center;gap:4px 6px;min-width:0}
 .vv-explore-search-label{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

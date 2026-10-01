@@ -82,10 +82,7 @@ function CreatorProfilePage({ own = false }) {
             {creator.name}
           </h1>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2"><p className="text-sm text-primary">@{creator.handle}</p><span className="vv-profile-count rounded-full border border-white/10 px-3 py-1.5 text-xs text-on-surface-variant">
-              {creatorPosts.length}{" "}
-              {creatorPosts.length === 1 ? "creation" : "creations"}
-            </span></div></div>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2"><p className="text-sm text-primary">@{creator.handle}</p></div></div>
           {creator.country&&<p className="mt-3 flex items-center gap-2 text-sm text-on-surface-variant"><Icon name="globe"/>{new Intl.DisplayNames(['en'],{type:'region'}).of(creator.country)}</p>}
 
           <p className="mt-5 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-on-surface-variant">
@@ -102,8 +99,8 @@ function CreatorProfilePage({ own = false }) {
       </section>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <div className="vault-panel p-5"><p className="vault-eyebrow"><Icon name="grid"/>Public creations</p><p className="mt-3 text-2xl">{creatorPosts.length}{posts.data?.hasMore?'+':''}</p></div>
-        <div className="vault-panel p-5"><p className="vault-eyebrow"><Icon name="cube"/>Creative collections</p><p className="mt-3 text-2xl">{new Set(creatorPosts.map(p=>p.category)).size}{posts.data?.hasMore?'+':''}</p></div>
+        <div className="vault-panel p-5"><p className="vault-eyebrow"><Icon name="grid"/>Public creations</p><p className="mt-3 text-2xl">{creator.publishedPostCount ?? '—'}</p></div>
+        <div className="vault-panel p-5"><p className="vault-eyebrow"><Icon name="cube"/>Total images posted</p><p className="mt-3 text-2xl">{creator.publishedImageCount ?? '—'}</p></div>
         <div className="vault-panel p-5"><p className="vault-eyebrow"><Icon name="lock"/>Personal vault</p><p className="mt-3 text-sm text-on-surface-variant">Public images. Owner-only files.</p></div>
       </div>
 
@@ -114,9 +111,10 @@ function CreatorProfilePage({ own = false }) {
           </h2>
         </div>
 
-        <div className="vv-profile-categories mb-6 flex flex-wrap gap-2" role="group" aria-label="Filter portfolio">{['all',...new Set(creatorPosts.map(p=>p.category))].map(c=><button type="button" key={c} aria-pressed={category===c} onClick={()=>setCategory(c)} className={category===c?'rounded-full bg-primary px-4 py-2 text-sm text-on-primary':'rounded-full bg-white/5 px-4 py-2 text-sm text-on-surface-variant'}>{c==='all'?'All creations':c}</button>)}</div>
+        <div className="vv-profile-categories vault-filmstrip !py-2 mb-6" role="group" aria-label="Filter portfolio">{['all',...new Set(creatorPosts.map(p=>p.category))].map(c=><button type="button" key={c} aria-pressed={category===c} onClick={()=>setCategory(c)} className={`shrink-0 whitespace-nowrap rounded-full border px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${category===c?'border-primary bg-primary text-on-primary':'border-white/10 bg-white/[0.03] text-on-surface-variant hover:border-white/25 hover:bg-white/[0.07] hover:text-on-surface'}`}>{c==='all'?'All creations':c}</button>)}</div>
         {creatorPosts.length > 0 ? (
           <ExploreGrid loadingMore={posts.loadingMore}
+            editOwnerId={user?.id === creator.id ? user.id : undefined}
             creations={creatorPosts.filter(p=>category==='all'||p.category===category)}
             onCreationClick={(creation) =>
               navigate(`/creations/${encodeURIComponent(creation.id)}`)
@@ -132,7 +130,7 @@ function CreatorProfilePage({ own = false }) {
           </div>
         )}
       </section>
-      {posts.data?.hasMore && <button type="button" disabled={posts.loadingMore} onClick={posts.loadMore} className="mt-8 rounded-full border border-primary/40 px-6 py-3 text-primary">{posts.loadingMore ? <span className="inline-flex items-center gap-2"><VaultLoader compact/>Loading…</span> : 'Load more posts'}</button>}
+      {posts.data?.hasMore && <button type="button" disabled={posts.loadingMore} onClick={posts.loadMore} className="mx-auto mt-8 block rounded-full border border-primary/40 px-6 py-3 text-primary">{posts.loadingMore ? <span className="inline-flex items-center gap-2"><VaultLoader compact/>Loading…</span> : 'Load more posts'}</button>}
     </main>
   );
 }

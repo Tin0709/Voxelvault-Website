@@ -42,7 +42,7 @@ export function balanceColumns(creations,columns,heights){
  }
  return groups;
 }
-export default function ExploreGrid({creations=[],onCreationClick,loading=false,loadingMore=false,rowOrder=false,explore=false,seed=''}){
+export default function ExploreGrid({creations=[],onCreationClick,editOwnerId,loading=false,loadingMore=false,rowOrder=false,explore=false,seed=''}){
  const grid=useRef(null);
  const placement=useRef({columns:0,slots:new Map()});
  const [heights,setHeights]=useState({});
@@ -85,7 +85,7 @@ export default function ExploreGrid({creations=[],onCreationClick,loading=false,
    totals[column]+=(heights[creation.id]||(creation.showcase?width*1.25+96:width*.625+96))+20;
   }
  }else groups=balanceColumns(creations,columns,heights);
- const card=creation=>creation.showcase?<MultiImageCard key={creation.id} creation={creation} touchTitle={showTouchTitle(creation,seed)} onOpen={onCreationClick}/>:<ExploreCard key={creation.id} creation={creation} touchTitle={showTouchTitle(creation,seed)} onOpen={onCreationClick}/>;
+ const card=creation=>creation.showcase?<MultiImageCard key={creation.id} creation={creation} touchTitle={showTouchTitle(creation,seed)} onOpen={onCreationClick}/>:<ExploreCard key={creation.id} creation={creation} editable={Boolean(editOwnerId && creation.creatorId === editOwnerId)} touchTitle={showTouchTitle(creation,seed)} onOpen={onCreationClick}/>;
  // Reserve exactly the last card's hidden details in each masonry column.
  // As it opens, consume that space so the grid/footer stay at the same height.
  useLayoutEffect(()=>{
@@ -101,7 +101,7 @@ export default function ExploreGrid({creations=[],onCreationClick,loading=false,
   });
   return ()=>cleanups.forEach(cleanup=>cleanup());
  },[creations,columns,loading,loadingMore,rowOrder,heights]);
- if(rowOrder)return <div className="vv-portfolio-grid grid items-start gap-5" style={{gridTemplateColumns:`repeat(${columns},minmax(0,1fr))`}}>{creations.map(creation=><ExploreCard key={creation.id} creation={creation} onOpen={onCreationClick}/>)}{(loading||loadingMore)&&Array.from({length:columns*2},(_,i)=><CardSkeleton key={i}/>)}</div>;
+ if(rowOrder)return <div className="vv-portfolio-grid grid items-start gap-5" style={{gridTemplateColumns:`repeat(${columns},minmax(0,1fr))`}}>{creations.map(creation=><ExploreCard key={creation.id} creation={creation} editable={Boolean(editOwnerId && creation.creatorId === editOwnerId)} onOpen={onCreationClick}/>)}{(loading||loadingMore)&&Array.from({length:columns*2},(_,i)=><CardSkeleton key={i}/>)}</div>;
  if(!loading&&!creations.length)return <p className="py-16 text-center text-on-surface-variant">No matching images. Try another category or keyword.</p>;
  return <div ref={grid} className={'grid items-start gap-5 '+(explore?'vv-explore-grid':'')} style={{gridTemplateColumns:`repeat(${columns},minmax(0,1fr))`}} aria-busy={loading||loadingMore}>{Array.from({length:columns},(_,column)=><div key={column} className="flex min-w-0 flex-col gap-5">{loading?Array.from({length:2},(_,i)=><CardSkeleton key={i}/>):groups[column].map(card)}{loadingMore&&Array.from({length:2},(_,i)=><CardSkeleton key={`more-${i}`}/>)}</div>)}</div>;
 }

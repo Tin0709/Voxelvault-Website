@@ -548,7 +548,18 @@ async function profileFor(id) {
       return { posts: results, hasMore: posts.length === limit };
     }
     if (/^\/api\/profiles\/[^/]+$/.test(path) && request.method === 'GET') {
-      return await profileFor(requireUuid(path.split('/').pop()));
+      const id = requireUuid(path.split('/').pop());
+      const profile = await profileFor(id);
+      // Posts are published content; drafts live separately. Count gallery associations
+      // with ready image resources, never uploads/profile images or private attachments.
+      const [posts, images] = await Promise.all([
+        db.from('posts').select('id', { count: 'exact', head: true }).eq('owner_id', id),
+        db.from('post_images').select('posts!inner(id),upload_sessions!inner(id)', { count: 'exact', head: true })
+          .eq('posts.owner_id', id).eq('upload_sessions.owner_id', id)
+          .eq('upload_sessions.kind', 'image').eq('upload_sessions.status', 'ready'),
+      ]);
+      checked(posts); checked(images);
+      return { ...profile, publishedPostCount: posts.count, publishedImageCount: images.count };
     }
     if (/^\/api\/posts\/[^/]+$/.test(path)) {
       const id = requireUuid(path.split('/').pop());
